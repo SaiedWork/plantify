@@ -305,6 +305,40 @@ export async function seed(db: Db, now = new Date()) {
     return { variantId: v.id, onHand: remaining };
   });
 
+  // A believable trail of staff activity so the audit log is not empty on a fresh demo.
+  const owner = staffRows[0]!;
+  const catalogManager = staffRows[1]!;
+  const auditRows: (typeof s.auditLog.$inferInsert)[] = [];
+  for (const o of planned.filter((p) => p.status === 'shipped' || p.status === 'delivered').slice(-25)) {
+    const at = new Date(Math.min(now.getTime(), o.placedAt.getTime() + DAY));
+    auditRows.push({
+      actorId: catalogManager.id,
+      action: 'order.status',
+      target: o.id,
+      detail: { from: 'processing', to: o.status === 'delivered' ? 'shipped' : o.status },
+      createdAt: at,
+    });
+  }
+  for (const r of refunds) {
+    auditRows.push({
+      actorId: owner.id,
+      action: 'order.refund',
+      target: r.orderId,
+      detail: { restock: r.restock, amountCents: r.amountCents },
+      createdAt: r.createdAt,
+    });
+  }
+  const restocks = movements.filter((m) => m.reason === 'restock').slice(0, 6);
+  for (const m of restocks) {
+    auditRows.push({
+      actorId: catalogManager.id,
+      action: 'inventory.adjust',
+      target: m.variantId,
+      detail: { delta: m.delta, reason: 'restock' },
+      createdAt: new Date(now.getTime() - faker.number.int({ min: 2, max: 40 }) * DAY),
+    });
+  }
+
   await insertChunks(db, s.order, orders);
   await insertChunks(db, s.orderItem, orderItems);
   await insertChunks(db, s.payment, payments);
@@ -312,6 +346,7 @@ export async function seed(db: Db, now = new Date()) {
   await insertChunks(db, s.refund, refunds);
   await insertChunks(db, s.inventoryLevel, levels);
   await insertChunks(db, s.inventoryMovement, movements);
+  await insertChunks(db, s.auditLog, auditRows);
 
   await insertChunks(db, s.meta, [
     { key: 'last_reset_at', value: now.toISOString() },

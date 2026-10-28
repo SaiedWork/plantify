@@ -4,7 +4,7 @@ import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 import { createContext, useContext, useEffect, type ReactNode } from "react";
 import type { Permission, Role } from "@plantify/contracts";
-import { Boxes, LayoutDashboard, Leaf, LogOut, Package, ShoppingBag, Tags, Users } from "lucide-react";
+import { Boxes, History, LayoutDashboard, Leaf, LogOut, Package, ShieldCheck, ShoppingBag, Tags, Users, Webhook } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { authClient } from "@/lib/auth-client";
 import { useApi } from "@/lib/use-api";
@@ -27,6 +27,9 @@ const NAV: { href: string; label: string; icon: typeof Package; permission?: Per
   { href: "/inventory", label: "Inventory", icon: Boxes, permission: "inventory:manage" },
   { href: "/orders", label: "Orders", icon: ShoppingBag, permission: "orders:view" },
   { href: "/customers", label: "Customers", icon: Users, permission: "customers:view" },
+  { href: "/webhooks", label: "Webhooks", icon: Webhook, permission: "webhooks:manage" },
+  { href: "/staff", label: "Staff & roles", icon: ShieldCheck, permission: "staff:manage" },
+  { href: "/audit", label: "Audit log", icon: History, permission: "staff:manage" },
 ];
 
 const ROLE_LABEL: Record<Role, string> = { owner: "Owner", catalog_manager: "Catalog manager", customer: "Customer" };
@@ -48,10 +51,25 @@ export function AdminShell({ children }: { children: ReactNode }) {
 
   return (
     <MeContext.Provider value={{ me, can }}>
-      <div className="grid min-h-screen md:grid-cols-[220px_1fr]">
-        <aside className="flex flex-col border-b bg-muted/30 md:border-b-0 md:border-r">
-          <div className="flex items-center gap-2 px-4 py-4 font-semibold text-green-800">
-            <Leaf className="size-5" /> Plantify Admin
+      <div className="grid min-h-screen grid-cols-[minmax(0,1fr)] md:grid-cols-[220px_minmax(0,1fr)]">
+        <aside className="flex min-w-0 flex-col border-b bg-muted/30 md:border-b-0 md:border-r">
+          <div className="flex items-center justify-between gap-2 px-4 py-4">
+            <span className="flex items-center gap-2 font-semibold text-green-800 dark:text-green-400">
+              <Leaf className="size-5" /> Plantify Admin
+            </span>
+            {/* The sidebar footer is hidden on small screens, so keep a way to sign out. */}
+            <Button
+              variant="ghost"
+              size="sm"
+              className="md:hidden"
+              onClick={async () => {
+                await authClient.signOut();
+                router.push("/login");
+                router.refresh();
+              }}
+            >
+              <LogOut className="size-4" /> Sign out
+            </Button>
           </div>
           <nav className="flex gap-1 overflow-x-auto px-2 pb-2 md:flex-col md:overflow-visible">
             {NAV.filter((n) => !n.permission || can(n.permission)).map((n) => {

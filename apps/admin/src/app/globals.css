@@ -7,7 +7,7 @@
 @theme inline {
   --color-background: var(--background);
   --color-foreground: var(--foreground);
-  --font-sans: var(--font-sans);
+  --font-sans: var(--font-geist-sans), ui-sans-serif, system-ui, -apple-system, "Segoe UI", sans-serif;
   --font-mono: var(--font-geist-mono);
   --font-heading: var(--font-sans);
   --color-sidebar-ring: var(--sidebar-ring);
@@ -127,4 +127,28 @@
   html {
     @apply font-sans;
   }
+}
+/* Chart tokens: the validated reference palette, selected (not inverted) per mode. */
+.viz-root {
+  --viz-surface: #fcfcfb;
+  --viz-text-primary: #0b0b0b;
+  --viz-text-secondary: #52514e;
+  --viz-text-muted: #898781;
+  --viz-grid: #e1e0d9;
+  --viz-baseline: #c3c2b7;
+  --viz-series-1: #2a78d6;
+  --viz-good: #006300;
+  --viz-bad: #d03b3b;
+}
+.dark .viz-root,
+:root[data-theme="dark"] .viz-root {
+  --viz-surface: #1a1a19;
+  --viz-text-primary: #f0efec;
+  --viz-text-secondary: #c3c2b7;
+  --viz-text-muted: #898781;
+  --viz-grid: #2c2c2a;
+  --viz-baseline: #383835;
+  --viz-series-1: #3987e5;
+  --viz-good: #0ca30c;
+  --viz-bad: #d03b3b;
 }

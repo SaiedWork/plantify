@@ -22,7 +22,8 @@ async function Categories() {
 }
 
 async function Featured() {
-  const { items } = await getProducts({ featured: true, pageSize: 8, sort: "name" });
+  // Four fills one row of the grid; more would leave an orphan on a second row.
+  const { items } = await getProducts({ featured: true, pageSize: 4, sort: "name" });
   return (
     <div className="grid grid-cols-2 gap-4 sm:grid-cols-3 lg:grid-cols-4">
       {items.map((p) => (
