@@ -15,7 +15,7 @@ export function SiteHeader() {
   const { itemCount } = useCart();
 
   return (
-    <header className="border-b bg-background">
+    <header className="border-b bg-background print:hidden">
       <div className="mx-auto flex h-14 max-w-6xl items-center justify-between px-4">
         <div className="flex items-center gap-6">
           <Link href="/" className="flex items-center gap-2 font-semibold text-green-800">

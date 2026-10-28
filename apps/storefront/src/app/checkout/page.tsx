@@ -3,23 +3,34 @@
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useState, type FormEvent } from "react";
-import type { PayResult } from "@plantify/contracts";
+import type { AddressView, PayResult } from "@plantify/contracts";
 import { toast } from "sonner";
 import { Button, buttonVariants } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { AddressFields, EMPTY_ADDRESS, toAddressPayload, type AddressValues } from "@/components/address-fields";
 import { useCart } from "@/components/cart-provider";
 import { OrderTotals } from "@/components/order-totals";
 import { api, ApiError } from "@/lib/api-client";
 import { formatPrice } from "@/lib/format";
 import { cn } from "@/lib/utils";
+import { useApi } from "@/lib/use-api";
 
 const DEMO_CARD = { number: "1234 5678 9", cvc: "123" };
 const FAILURE_MESSAGES: Record<string, string> = {
   card_declined: "Your card was declined. Try another card, such as the success demo card.",
   out_of_stock: "Sorry, someone bought the last one while you were paying. Nothing was charged.",
 };
+
+const toValues = (a: AddressView): AddressValues => ({
+  fullName: a.fullName,
+  line1: a.line1,
+  line2: a.line2 ?? "",
+  city: a.city,
+  region: a.region ?? "",
+  postalCode: a.postalCode,
+});
 
 type Step = { orderId: string | null; threeDS: { paymentId: string; orderId: string } | null };
 
@@ -28,6 +39,11 @@ export default function CheckoutPage() {
   const { cart, refresh } = useCart();
   const [busy, setBusy] = useState(false);
   const [step, setStep] = useState<Step>({ orderId: null, threeDS: null });
+  const { data: saved } = useApi<AddressView[]>("/addresses");
+  const [address, setAddress] = useState<AddressValues | null>(null);
+  const [saveAddress, setSaveAddress] = useState(false);
+  const defaultSaved = saved?.find((a) => a.isDefault) ?? saved?.[0];
+  const addressValue: AddressValues = address ?? (defaultSaved ? toValues(defaultSaved) : EMPTY_ADDRESS);
   const [card, setCard] = useState({ number: "", expMonth: "", expYear: "", cvc: "", name: "" });
 
   function autofill() {
@@ -49,30 +65,18 @@ export default function CheckoutPage() {
 
   async function onSubmit(e: FormEvent<HTMLFormElement>) {
     e.preventDefault();
-    const form = new FormData(e.currentTarget);
     setBusy(true);
     try {
       // The order is created once; a declined card can be retried against the same order.
       let orderId = step.orderId;
       if (!orderId) {
-        const line2 = String(form.get("line2") ?? "").trim();
-        const region = String(form.get("region") ?? "").trim();
         const created = await api<{ orderId: string }>("/checkout/orders", {
           method: "POST",
-          json: {
-            shippingAddress: {
-              fullName: String(form.get("fullName")).trim(),
-              line1: String(form.get("line1")).trim(),
-              ...(line2 ? { line2 } : {}),
-              city: String(form.get("city")).trim(),
-              ...(region ? { region } : {}),
-              postalCode: String(form.get("postalCode")).trim(),
-              country: "US",
-            },
-          },
+          json: { shippingAddress: toAddressPayload(addressValue) },
         });
         orderId = created.orderId;
         setStep({ orderId, threeDS: null });
+        if (saveAddress) await api("/addresses", { method: "POST", json: toAddressPayload(addressValue) }).catch(() => {});
       }
       handleResult(
         await api<PayResult>(`/checkout/orders/${orderId}/pay`, {
@@ -126,13 +130,36 @@ export default function CheckoutPage() {
               <CardTitle>Shipping address</CardTitle>
               <CardDescription>Fake addresses are fine. Nothing will be shipped.</CardDescription>
             </CardHeader>
-            <CardContent className="grid gap-4 sm:grid-cols-2">
-              <Field name="fullName" label="Full name" className="sm:col-span-2" disabled={locked} autoComplete="name" />
-              <Field name="line1" label="Address" className="sm:col-span-2" disabled={locked} autoComplete="address-line1" />
-              <Field name="line2" label="Apartment, suite (optional)" className="sm:col-span-2" disabled={locked} required={false} />
-              <Field name="city" label="City" disabled={locked} autoComplete="address-level2" />
-              <Field name="region" label="State (optional)" disabled={locked} required={false} />
-              <Field name="postalCode" label="ZIP code" disabled={locked} autoComplete="postal-code" />
+            <CardContent className="space-y-4">
+              {saved && saved.length > 0 && (
+                <div className="space-y-2">
+                  <Label htmlFor="savedAddress">Use a saved address</Label>
+                  <select
+                    id="savedAddress"
+                    disabled={locked}
+                    value={saved.find((a) => JSON.stringify(toValues(a)) === JSON.stringify(addressValue))?.id ?? ""}
+                    onChange={(e) => {
+                      const chosen = saved.find((a) => a.id === e.target.value);
+                      setAddress(chosen ? toValues(chosen) : EMPTY_ADDRESS);
+                    }}
+                    className="h-9 w-full rounded-lg border bg-background px-2 text-sm"
+                  >
+                    <option value="">Enter a new address</option>
+                    {saved.map((a) => (
+                      <option key={a.id} value={a.id}>
+                        {a.fullName}, {a.line1}, {a.city}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+              )}
+              <AddressFields value={addressValue} onChange={setAddress} disabled={locked} idPrefix="ship" />
+              {!locked && (
+                <label className="flex items-center gap-2 text-sm">
+                  <input type="checkbox" checked={saveAddress} onChange={(e) => setSaveAddress(e.target.checked)} />
+                  Save this address to my account
+                </label>
+              )}
             </CardContent>
           </Card>
 
@@ -226,21 +253,6 @@ export default function CheckoutPage() {
           </Card>
         </div>
       )}
-    </div>
-  );
-}
-
-function Field({
-  name,
-  label,
-  className,
-  required = true,
-  ...rest
-}: { name: string; label: string; className?: string; required?: boolean } & React.ComponentProps<"input">) {
-  return (
-    <div className={cn("space-y-2", className)}>
-      <Label htmlFor={name}>{label}</Label>
-      <Input id={name} name={name} required={required} maxLength={120} {...rest} />
     </div>
   );
 }

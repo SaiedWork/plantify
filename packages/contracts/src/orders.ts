@@ -36,6 +36,19 @@ export const addressSchema = z.object({
 });
 export type Address = z.infer<typeof addressSchema>;
 
+export const MAX_SAVED_ADDRESSES = 10;
+
+export const savedAddressSchema = addressSchema.extend({ isDefault: z.boolean().optional() });
+export const savedAddressPatchSchema = savedAddressSchema.partial();
+export type SavedAddressInput = z.infer<typeof savedAddressSchema>;
+
+export type AddressView = Omit<Address, 'line2' | 'region'> & {
+  id: string;
+  line2: string | null;
+  region: string | null;
+  isDefault: boolean;
+};
+
 export const createOrderSchema = z.object({ shippingAddress: addressSchema });
 export const payOrderSchema = z.object({ card: cardSchema });
 

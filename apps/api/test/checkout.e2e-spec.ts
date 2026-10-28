@@ -9,6 +9,7 @@ import { AppModule } from './../src/app.module.js';
 import { configureApp } from './../src/configure-app.js';
 import { DB, type Db } from './../src/db/db.module.js';
 import { signPayload } from './../src/payments/signature.js';
+import { Jar } from './support.js';
 
 const ADDRESS = { fullName: 'Test Buyer', line1: '1 Garden Way', city: 'Portland', region: 'OR', postalCode: '97201', country: 'US' };
 const card = (number: string, over: Record<string, unknown> = {}) => ({
@@ -19,21 +20,6 @@ const card = (number: string, over: Record<string, unknown> = {}) => ({
   name: 'Test Buyer',
   ...over,
 });
-
-class Jar {
-  private cookies = new Map<string, string>();
-  absorb(res: request.Response) {
-    for (const line of (res.headers['set-cookie'] as unknown as string[] | undefined) ?? []) {
-      const [pair] = line.split(';');
-      const eq = pair!.indexOf('=');
-      this.cookies.set(pair!.slice(0, eq), pair!.slice(eq + 1));
-    }
-    return res;
-  }
-  header() {
-    return [...this.cookies].map(([k, v]) => `${k}=${v}`).join('; ');
-  }
-}
 
 describe('Cart + checkout + payments (e2e)', () => {
   let app: NestExpressApplication;
