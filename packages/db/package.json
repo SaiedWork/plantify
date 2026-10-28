@@ -8,9 +8,21 @@
   "scripts": {
     "typecheck": "tsc --noEmit",
     "test": "echo \"no tests yet\"",
-    "migrate": "echo \"TODO milestone 1\"",
+    "migrate": "tsx --env-file=../../.env src/migrate.ts",
     "seed": "echo \"TODO milestone 1\"",
-    "reset": "echo \"TODO milestone 1\""
+    "reset": "echo \"TODO milestone 1\"",
+    "generate": "drizzle-kit generate"
   },
-  "devDependencies": { "@plantify/config": "workspace:*", "typescript": "^5.6.0" }
+  "devDependencies": {
+    "@plantify/config": "workspace:*",
+    "@types/node": "^26.6.5",
+    "@types/pg": "^8.23.1",
+    "drizzle-kit": "^0.31.11",
+    "tsx": "^4.23.15",
+    "typescript": "^5.6.0"
+  },
+  "dependencies": {
+    "drizzle-orm": "^0.45.4",
+    "pg": "^8.23.1"
+  }
 }
