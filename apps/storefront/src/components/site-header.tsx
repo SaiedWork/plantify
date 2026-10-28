@@ -1,0 +1,53 @@
+"use client";
+
+import Link from "next/link";
+import { useRouter } from "next/navigation";
+import { Leaf } from "lucide-react";
+import { Button, buttonVariants } from "@/components/ui/button";
+import { DemoInboxButton } from "@/components/demo-inbox";
+import { authClient } from "@/lib/auth-client";
+
+export function SiteHeader() {
+  const router = useRouter();
+  const { data: session, isPending } = authClient.useSession();
+
+  return (
+    <header className="border-b bg-background">
+      <div className="mx-auto flex h-14 max-w-6xl items-center justify-between px-4">
+        <Link href="/" className="flex items-center gap-2 font-semibold text-green-800">
+          <Leaf className="size-5" /> Plantify
+        </Link>
+        <nav className="flex items-center gap-2">
+          <DemoInboxButton />
+          {isPending ? null : session ? (
+            <>
+              <Link href="/account" className={buttonVariants({ variant: "ghost", size: "sm" })}>
+                {session.user.name}
+              </Link>
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={async () => {
+                  await authClient.signOut();
+                  router.push("/");
+                  router.refresh();
+                }}
+              >
+                Sign out
+              </Button>
+            </>
+          ) : (
+            <>
+              <Link href="/sign-in" className={buttonVariants({ variant: "ghost", size: "sm" })}>
+                Sign in
+              </Link>
+              <Link href="/sign-up" className={buttonVariants({ size: "sm" })}>
+                Create account
+              </Link>
+            </>
+          )}
+        </nav>
+      </div>
+    </header>
+  );
+}

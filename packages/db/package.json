@@ -3,15 +3,16 @@
   "version": "0.0.0",
   "private": true,
   "type": "module",
-  "main": "./src/index.ts",
-  "types": "./src/index.ts",
+  "main": "./dist/index.js",
+  "types": "./dist/index.d.ts",
   "scripts": {
     "typecheck": "tsc --noEmit",
     "test": "echo \"no tests yet\"",
     "migrate": "tsx --env-file=../../.env src/migrate.ts",
     "seed": "tsx --env-file=../../.env src/cli.ts seed",
     "reset": "tsx --env-file=../../.env src/cli.ts reset",
-    "generate": "drizzle-kit generate"
+    "generate": "drizzle-kit generate",
+    "build": "tsc"
   },
   "devDependencies": {
     "@plantify/config": "workspace:*",
@@ -29,5 +30,11 @@
     "drizzle-orm": "^0.45.4",
     "pg": "^8.23.1",
     "ws": "^8.22.0"
+  },
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "default": "./dist/index.js"
+    }
   }
 }
