@@ -1,0 +1,21 @@
+{
+  "name": "plantify",
+  "private": true,
+  "packageManager": "pnpm@9.14.2",
+  "engines": { "node": ">=22" },
+  "scripts": {
+    "dev": "turbo run dev",
+    "build": "turbo run build",
+    "lint": "turbo run lint",
+    "typecheck": "turbo run typecheck",
+    "test": "turbo run test",
+    "db:migrate": "pnpm --filter @plantify/db migrate",
+    "db:seed": "pnpm --filter @plantify/db seed",
+    "db:reset": "pnpm --filter @plantify/db reset"
+  },
+  "devDependencies": {
+    "turbo": "^2.3.0",
+    "typescript": "^5.6.0",
+    "prettier": "^3.3.0"
+  }
+}
