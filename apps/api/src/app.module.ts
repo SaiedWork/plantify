@@ -1,4 +1,5 @@
 import { Module } from '@nestjs/common';
+import { AddressesModule } from './addresses/addresses.module.js';
 import { AuthModule } from './auth/auth.module.js';
 import { CartModule } from './cart/cart.module.js';
 import { CatalogModule } from './catalog/catalog.module.js';
@@ -8,7 +9,7 @@ import { MailModule } from './mail/mail.module.js';
 import { OrdersModule } from './orders/orders.module.js';
 
 @Module({
-  imports: [DbModule, MailModule, AuthModule, CatalogModule, CartModule, OrdersModule],
+  imports: [DbModule, MailModule, AuthModule, CatalogModule, CartModule, OrdersModule, AddressesModule],
   controllers: [HealthController],
 })
 export class AppModule {}

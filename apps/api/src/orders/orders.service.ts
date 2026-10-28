@@ -1,5 +1,5 @@
-import { Injectable, NotFoundException } from '@nestjs/common';
-import type { Address, OrderDetail, OrderStatus, OrderSummary } from '@plantify/contracts';
+import { ConflictException, Injectable, NotFoundException } from '@nestjs/common';
+import { canTransition, type Address, type OrderDetail, type OrderStatus, type OrderSummary } from '@plantify/contracts';
 import { sql } from 'drizzle-orm';
 import { InjectDb, type Db } from '../db/db.module.js';
 
@@ -27,6 +27,24 @@ export class OrdersService {
       itemCount: Number(r.item_count),
       placedAt: new Date(r.placed_at).toISOString(),
     }));
+  }
+
+  /** Customers may only cancel orders that were never paid; paid orders go through support/admin. */
+  async cancelUnpaid(userId: string, orderId: string): Promise<{ status: 'cancelled' }> {
+    await this.db.transaction(async (tx) => {
+      const { rows } = await tx.execute<{ status: OrderStatus }>(
+        sql`select status from "order" where id = ${orderId} and user_id = ${userId} for update`,
+      );
+      if (!rows[0]) throw new NotFoundException('Order not found');
+      if (!canTransition(rows[0].status, 'cancelled') || rows[0].status !== 'pending_payment') {
+        throw new ConflictException('Only unpaid orders can be cancelled');
+      }
+      await tx.execute(sql`update "order" set status = 'cancelled', updated_at = now() where id = ${orderId}`);
+      await tx.execute(sql`
+        update payment set status = 'failed', failure_reason = 'order_cancelled'
+        where order_id = ${orderId} and status in ('pending', 'requires_action')`);
+    });
+    return { status: 'cancelled' };
   }
 
   async detailForUser(userId: string, orderId: string): Promise<OrderDetail> {

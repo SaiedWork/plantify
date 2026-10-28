@@ -48,6 +48,11 @@ export class OrdersController {
     return this.orders.listForUser(req.user!.id);
   }
 
+  @Post('orders/:id/cancel')
+  cancel(@Req() req: AuthedRequest, @Param('id') id: string) {
+    return this.orders.cancelUnpaid(req.user!.id, id);
+  }
+
   @Get('orders/:id')
   detail(@Req() req: AuthedRequest, @Param('id') id: string) {
     return this.orders.detailForUser(req.user!.id, id);
