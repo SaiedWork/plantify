@@ -1,4 +1,5 @@
 import { faker } from '@faker-js/faker';
+import { hashPassword } from 'better-auth/crypto';
 import type { PgTable } from 'drizzle-orm/pg-core';
 import type { Db } from '../client.js';
 import * as s from '../schema/index.js';
@@ -7,6 +8,9 @@ import { CATEGORIES, PLANT_VARIANTS, PRODUCTS, slugify } from './catalog-data.js
 const DAY = 24 * 60 * 60 * 1000;
 const HISTORY_DAYS = 90;
 const CUSTOMER_COUNT = 60;
+
+/** Public on purpose: shown on the admin login page's "demo login" buttons. */
+export const DEMO_STAFF_PASSWORD = 'plantify-demo';
 
 export const STAFF = [
   { name: 'Olivia Owner', email: 'owner@plantify.test', role: 'owner' as const },
@@ -119,6 +123,12 @@ export async function seed(db: Db, now = new Date()) {
     };
   });
   await insertChunks(db, s.user, staffRows);
+  const passwordHash = await hashPassword(DEMO_STAFF_PASSWORD);
+  await insertChunks(
+    db,
+    s.account,
+    staffRows.map((u) => ({ id: crypto.randomUUID(), userId: u.id, accountId: u.id, providerId: 'credential', password: passwordHash })),
+  );
   await insertChunks(
     db,
     s.user,

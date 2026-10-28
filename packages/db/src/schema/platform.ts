@@ -1,4 +1,4 @@
-import { boolean, index, integer, jsonb, pgTable, text, timestamp } from 'drizzle-orm/pg-core';
+import { bigint, boolean, index, integer, jsonb, pgTable, text, timestamp } from 'drizzle-orm/pg-core';
 import { createdAt, id } from './_helpers.js';
 
 export const demoEmail = pgTable(
@@ -56,10 +56,12 @@ export const auditLog = pgTable('audit_log', {
   createdAt: createdAt(),
 });
 
+// Shape required by Better Auth's database rate-limit storage (lastRequest is epoch millis).
 export const rateLimit = pgTable('rate_limit', {
-  key: text('key').primaryKey(),
+  id: text('id').primaryKey(),
+  key: text('key').notNull().unique(),
   count: integer('count').notNull(),
-  windowStart: timestamp('window_start', { withTimezone: true }).notNull(),
+  lastRequest: bigint('last_request', { mode: 'number' }).notNull(),
 });
 
 export const meta = pgTable('meta', {
