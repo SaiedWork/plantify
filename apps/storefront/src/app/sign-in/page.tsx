@@ -1,8 +1,8 @@
 "use client";
 
 import Link from "next/link";
-import { useRouter } from "next/navigation";
-import { useState, type FormEvent } from "react";
+import { useRouter, useSearchParams } from "next/navigation";
+import { Suspense, useState, type FormEvent } from "react";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
@@ -10,12 +10,14 @@ import { Input } from "@/components/ui/input";
 import { InputOTP, InputOTPGroup, InputOTPSlot } from "@/components/ui/input-otp";
 import { Label } from "@/components/ui/label";
 import { useDemoInbox } from "@/components/demo-inbox";
+import { safeNext } from "@/lib/api-client";
 import { authClient } from "@/lib/auth-client";
 
 type Mode = "password" | "code";
 
-export default function SignInPage() {
+function SignInForm() {
   const router = useRouter();
+  const next = safeNext(useSearchParams().get("next"));
   const inbox = useDemoInbox();
   const [mode, setMode] = useState<Mode>("password");
   const [email, setEmail] = useState("");
@@ -24,7 +26,7 @@ export default function SignInPage() {
   const [busy, setBusy] = useState(false);
 
   function done() {
-    router.push("/");
+    router.push(next);
     router.refresh();
   }
 
@@ -39,7 +41,7 @@ export default function SignInPage() {
       // Account exists but the email is not verified yet: send a fresh code and continue there.
       await authClient.emailOtp.sendVerificationOtp({ email, type: "email-verification" });
       inbox.open();
-      router.push(`/verify?email=${encodeURIComponent(email)}`);
+      router.push(`/verify?email=${encodeURIComponent(email)}&next=${encodeURIComponent(next)}`);
       return;
     }
     toast.error(error.message ?? "Sign in failed");
@@ -129,12 +131,20 @@ export default function SignInPage() {
 
           <p className="text-center text-sm text-muted-foreground">
             New here?{" "}
-            <Link href="/sign-up" className="underline">
+            <Link href={`/sign-up?next=${encodeURIComponent(next)}`} className="underline">
               Create an account
             </Link>
           </p>
         </CardContent>
       </Card>
     </div>
+  );
+}
+
+export default function SignInPage() {
+  return (
+    <Suspense>
+      <SignInForm />
+    </Suspense>
   );
 }

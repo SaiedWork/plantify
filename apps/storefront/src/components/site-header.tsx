@@ -2,15 +2,17 @@
 
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { Leaf } from "lucide-react";
+import { Leaf, ShoppingCart } from "lucide-react";
 import { Button, buttonVariants } from "@/components/ui/button";
 import { SearchBox } from "@/components/search-box";
+import { useCart } from "@/components/cart-provider";
 import { DemoInboxButton } from "@/components/demo-inbox";
 import { authClient } from "@/lib/auth-client";
 
 export function SiteHeader() {
   const router = useRouter();
   const { data: session, isPending } = authClient.useSession();
+  const { itemCount } = useCart();
 
   return (
     <header className="border-b bg-background">
@@ -26,6 +28,14 @@ export function SiteHeader() {
         <SearchBox />
         <nav className="flex items-center gap-2">
           <DemoInboxButton />
+          <Link href="/cart" className={buttonVariants({ variant: "ghost", size: "sm" }) + " relative"} aria-label={`Cart, ${itemCount} items`}>
+            <ShoppingCart className="size-4" />
+            {itemCount > 0 && (
+              <span className="absolute -right-1 -top-1 flex size-4 items-center justify-center rounded-full bg-green-800 text-[10px] text-white">
+                {itemCount}
+              </span>
+            )}
+          </Link>
           {isPending ? null : session ? (
             <>
               <Link href="/account" className={buttonVariants({ variant: "ghost", size: "sm" })}>

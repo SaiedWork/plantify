@@ -7,7 +7,7 @@
   "types": "./dist/index.d.ts",
   "scripts": {
     "typecheck": "tsc --noEmit",
-    "test": "echo \"no tests yet\"",
+    "test": "vitest run",
     "build": "tsc"
   },
   "dependencies": {
@@ -15,7 +15,8 @@
   },
   "devDependencies": {
     "@plantify/config": "workspace:*",
-    "typescript": "^5.6.0"
+    "typescript": "^5.6.0",
+    "vitest": "^4.1.2"
   },
   "exports": {
     ".": {

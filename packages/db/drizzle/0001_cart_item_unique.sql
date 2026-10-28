@@ -1,0 +1,1 @@
+CREATE UNIQUE INDEX "cart_item_cart_variant_unique" ON "cart_item" USING btree ("cart_id","variant_id");

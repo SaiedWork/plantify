@@ -8,6 +8,7 @@ const SESSION_COOKIES = ["better-auth.session_token", "__Secure-better-auth.sess
 export function proxy(request: NextRequest) {
   if (SESSION_COOKIES.some((name) => request.cookies.has(name))) return NextResponse.next();
   const url = new URL("/sign-in", request.url);
+  url.searchParams.set("next", request.nextUrl.pathname);
   return NextResponse.redirect(url);
 }
 
