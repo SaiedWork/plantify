@@ -33,7 +33,8 @@ function createAuth(db: Db, mail: MailService) {
         role: { type: 'string', required: false, defaultValue: 'customer', input: false },
       },
     },
-    rateLimit: { enabled: true, storage: 'database', window: 60, max: 60 },
+    // Switched off only by the e2e suite, which creates dozens of users from one IP.
+    rateLimit: { enabled: process.env.AUTH_RATE_LIMIT !== 'off', storage: 'database', window: 60, max: 60 },
     plugins: [
       emailOTP({
         otpLength: 6,

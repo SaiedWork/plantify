@@ -1,18 +1,20 @@
 "use client";
 
 import Link from "next/link";
-import { useRouter } from "next/navigation";
-import { useState, type FormEvent } from "react";
+import { useRouter, useSearchParams } from "next/navigation";
+import { Suspense, useState, type FormEvent } from "react";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { useDemoInbox } from "@/components/demo-inbox";
+import { safeNext } from "@/lib/api-client";
 import { authClient } from "@/lib/auth-client";
 
-export default function SignUpPage() {
+function SignUpForm() {
   const router = useRouter();
+  const next = safeNext(useSearchParams().get("next"));
   const inbox = useDemoInbox();
   const [busy, setBusy] = useState(false);
 
@@ -32,7 +34,7 @@ export default function SignUpPage() {
       return;
     }
     inbox.open();
-    router.push(`/verify?email=${encodeURIComponent(email)}`);
+    router.push(`/verify?email=${encodeURIComponent(email)}&next=${encodeURIComponent(next)}`);
   }
 
   return (
@@ -70,12 +72,20 @@ export default function SignUpPage() {
           </form>
           <p className="mt-4 text-center text-sm text-muted-foreground">
             Already have an account?{" "}
-            <Link href="/sign-in" className="underline">
+            <Link href={`/sign-in?next=${encodeURIComponent(next)}`} className="underline">
               Sign in
             </Link>
           </p>
         </CardContent>
       </Card>
     </div>
+  );
+}
+
+export default function SignUpPage() {
+  return (
+    <Suspense>
+      <SignUpForm />
+    </Suspense>
   );
 }

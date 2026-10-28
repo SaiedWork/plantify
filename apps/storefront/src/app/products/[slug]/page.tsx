@@ -31,7 +31,7 @@ async function Product({ params }: { params: Promise<{ slug: string }> }) {
         </nav>
         <h1 className="text-3xl font-bold tracking-tight">{product.name}</h1>
         <p className="text-muted-foreground">{product.description}</p>
-        <VariantPicker variants={product.variants} />
+        <VariantPicker variants={product.variants} productName={product.name} />
       </div>
     </div>
   );

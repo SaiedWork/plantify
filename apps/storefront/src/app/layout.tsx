@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 import { Geist, Geist_Mono } from "next/font/google";
+import { CartProvider } from "@/components/cart-provider";
 import { DemoInboxProvider } from "@/components/demo-inbox";
 import { SiteHeader } from "@/components/site-header";
 import { Toaster } from "@/components/ui/sonner";
@@ -29,11 +30,14 @@ export default function RootLayout({ children }: LayoutProps<"/">) {
     >
       <body className="min-h-full flex flex-col">
         <DemoInboxProvider>
-          <div className="bg-amber-100 px-4 py-1.5 text-center text-xs text-amber-900">
-            Demo store: all data is fake and resets every 7 days. Please don&apos;t enter real information.
-          </div>
-          <SiteHeader />
-          <main className="flex-1">{children}</main>
+          <CartProvider>
+            <div className="bg-amber-100 px-4 py-1.5 text-center text-xs text-amber-900">
+              Demo store: all data is fake and resets every 7 days. Please
+              don&apos;t enter real information.
+            </div>
+            <SiteHeader />
+            <main className="flex-1">{children}</main>
+          </CartProvider>
         </DemoInboxProvider>
         <Toaster />
       </body>

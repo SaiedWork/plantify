@@ -1,5 +1,14 @@
 {
   "extends": "@plantify/config/tsconfig.base.json",
-  "compilerOptions": { "outDir": "dist", "rootDir": "src", "declaration": true },
-  "include": ["src"]
+  "compilerOptions": {
+    "outDir": "dist",
+    "rootDir": "src",
+    "declaration": true
+  },
+  "include": [
+    "src"
+  ],
+  "exclude": [
+    "src/**/*.test.ts"
+  ]
 }

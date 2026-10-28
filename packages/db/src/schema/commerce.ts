@@ -1,4 +1,4 @@
-import { boolean, index, integer, jsonb, pgTable, text, timestamp } from 'drizzle-orm/pg-core';
+import { boolean, index, integer, jsonb, pgTable, text, timestamp, uniqueIndex } from 'drizzle-orm/pg-core';
 import { createdAt, id, updatedAt } from './_helpers.js';
 import { user } from './auth.js';
 import { productVariant } from './catalog.js';
@@ -48,7 +48,7 @@ export const cartItem = pgTable(
       .references(() => productVariant.id, { onDelete: 'cascade' }),
     quantity: integer('quantity').notNull(),
   },
-  (t) => [index('cart_item_cart_idx').on(t.cartId)],
+  (t) => [index('cart_item_cart_idx').on(t.cartId), uniqueIndex('cart_item_cart_variant_unique').on(t.cartId, t.variantId)],
 );
 
 export const order = pgTable(

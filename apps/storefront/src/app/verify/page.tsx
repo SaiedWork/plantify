@@ -7,6 +7,7 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { InputOTP, InputOTPGroup, InputOTPSlot } from "@/components/ui/input-otp";
 import { useDemoInbox } from "@/components/demo-inbox";
+import { safeNext } from "@/lib/api-client";
 import { authClient } from "@/lib/auth-client";
 
 const RESEND_SECONDS = 30;
@@ -14,7 +15,9 @@ const RESEND_SECONDS = 30;
 function VerifyForm() {
   const router = useRouter();
   const inbox = useDemoInbox();
-  const email = useSearchParams().get("email") ?? "";
+  const params = useSearchParams();
+  const email = params.get("email") ?? "";
+  const next = safeNext(params.get("next"));
   const [code, setCode] = useState("");
   const [busy, setBusy] = useState(false);
   const [cooldown, setCooldown] = useState(RESEND_SECONDS);
@@ -35,7 +38,7 @@ function VerifyForm() {
       return;
     }
     toast.success("Email verified. Welcome to Plantify!");
-    router.push("/");
+    router.push(next);
     router.refresh();
   }
 
