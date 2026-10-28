@@ -3,19 +3,21 @@ import { computeTotals, type Address, type CardInput, type PayResult } from '@pl
 import { sql } from 'drizzle-orm';
 import { InjectDb, type Db } from '../db/db.module.js';
 import { MockPaymentProvider } from '../payments/mock-payment.provider.js';
+import { WebhookDispatcher } from '../webhooks/webhook-dispatcher.service.js';
 
 @Injectable()
 export class CheckoutService {
   constructor(
     @InjectDb() private readonly db: Db,
     private readonly provider: MockPaymentProvider,
+    private readonly webhooks: WebhookDispatcher,
   ) {}
 
   /** Snapshots the cart into a `pending_payment` order. Nothing is reserved or charged yet. */
   async createOrder(userId: string, cartId: string | null, address: Address): Promise<{ orderId: string }> {
     if (!cartId) throw new BadRequestException('Your cart is empty');
 
-    return this.db.transaction(async (tx) => {
+    const created = await this.db.transaction(async (tx) => {
       // Serialises order numbering across concurrent checkouts.
       await tx.execute(sql`select pg_advisory_xact_lock(4243)`);
 
@@ -64,6 +66,8 @@ export class CheckoutService {
       }
       return { orderId };
     });
+    await this.webhooks.emitOrder('order.created', created.orderId);
+    return created;
   }
 
   async pay(userId: string, orderId: string, card: CardInput): Promise<PayResult> {

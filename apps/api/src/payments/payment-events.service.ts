@@ -3,19 +3,21 @@ import type { PaymentEvent } from '@plantify/contracts';
 import { sql } from 'drizzle-orm';
 import { InjectDb, type Db } from '../db/db.module.js';
 import { MailService, type ReceiptData } from '../mail/mail.service.js';
+import { WebhookDispatcher } from '../webhooks/webhook-dispatcher.service.js';
 
 type HandleResult =
   | { status: 'duplicate' }
   | { status: 'ignored' }
   | { status: 'failed' }
   | { status: 'out_of_stock' }
-  | { status: 'paid'; receipt: ReceiptData };
+  | { status: 'paid'; receipt: ReceiptData; orderId: string; crossedLowStock: string[] };
 
 @Injectable()
 export class PaymentEventsService {
   constructor(
     @InjectDb() private readonly db: Db,
     private readonly mail: MailService,
+    private readonly webhooks: WebhookDispatcher,
   ) {}
 
   /** Idempotent: the event id is recorded in the same transaction as its effects. */
@@ -68,10 +70,18 @@ export class PaymentEventsService {
 
       // Lock stock rows in a stable order so concurrent checkouts cannot deadlock.
       const ids = items.map((i) => sql`${i.variant_id}`);
-      const { rows: levels } = await tx.execute<{ variant_id: string; on_hand: number }>(sql`
-        select variant_id, on_hand from inventory_level
-        where variant_id in (${sql.join(ids, sql`, `)}) order by variant_id for update`);
+      const { rows: levels } = await tx.execute<{ variant_id: string; on_hand: number; threshold: number }>(sql`
+        select l.variant_id, l.on_hand, v.low_stock_threshold as threshold
+        from inventory_level l join product_variant v on v.id = l.variant_id
+        where l.variant_id in (${sql.join(ids, sql`, `)}) order by l.variant_id for update of l`);
       const onHand = new Map(levels.map((l) => [l.variant_id, l.on_hand]));
+      // Variants this order pushes from "fine" to "low", for the inventory.low webhook.
+      const crossedLowStock = items
+        .filter((i) => {
+          const level = levels.find((l) => l.variant_id === i.variant_id);
+          return level !== undefined && level.on_hand > level.threshold && level.on_hand - i.quantity <= level.threshold;
+        })
+        .map((i) => i.variant_id);
 
       if (items.some((i) => (onHand.get(i.variant_id) ?? 0) < i.quantity)) {
         await tx.execute(sql`update "order" set status = 'cancelled', updated_at = now() where id = ${orderId}`);
@@ -99,6 +109,8 @@ export class PaymentEventsService {
 
       return {
         status: 'paid',
+        orderId,
+        crossedLowStock,
         receipt: {
           to: order.email,
           orderNumber: order.number,
@@ -118,7 +130,11 @@ export class PaymentEventsService {
     });
 
     // Outside the transaction: a mail problem must never undo a captured payment.
-    if (result.status === 'paid') await this.mail.sendReceipt(result.receipt);
+    if (result.status === 'paid') {
+      await this.mail.sendReceipt(result.receipt);
+      await this.webhooks.emitOrder('order.paid', result.orderId);
+      await this.webhooks.emitInventoryLow(result.crossedLowStock);
+    }
     return result;
   }
 }
