@@ -7,6 +7,10 @@ CREATE TABLE "account" (
 	"password" text,
 	"access_token" text,
 	"refresh_token" text,
+	"id_token" text,
+	"access_token_expires_at" timestamp with time zone,
+	"refresh_token_expires_at" timestamp with time zone,
+	"scope" text,
 	"created_at" timestamp with time zone DEFAULT now() NOT NULL,
 	"updated_at" timestamp with time zone DEFAULT now() NOT NULL
 );
@@ -215,9 +219,11 @@ CREATE TABLE "meta" (
 );
 --> statement-breakpoint
 CREATE TABLE "rate_limit" (
-	"key" text PRIMARY KEY NOT NULL,
+	"id" text PRIMARY KEY NOT NULL,
+	"key" text NOT NULL,
 	"count" integer NOT NULL,
-	"window_start" timestamp with time zone NOT NULL
+	"last_request" bigint NOT NULL,
+	CONSTRAINT "rate_limit_key_unique" UNIQUE("key")
 );
 --> statement-breakpoint
 CREATE TABLE "webhook_delivery" (
