@@ -1,0 +1,5 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 500 500" role="img" aria-label="Hanging Macramé Planter">
+<defs><linearGradient id="g" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#efe9e4"/><stop offset="1" stop-color="#ddd2c8"/></linearGradient></defs>
+<rect width="500" height="500" fill="url(#g)"/><ellipse cx="250" cy="452" rx="130" ry="14" fill="#000" opacity=".08"/>
+<rect x="170" y="200" width="160" height="220" rx="18" fill="#b98b5e"/><rect x="170" y="200" width="160" height="30" rx="14" fill="#9c7248"/><path d="M170 300h160" stroke="#fff" stroke-opacity=".3" stroke-width="3"/>
+</svg>

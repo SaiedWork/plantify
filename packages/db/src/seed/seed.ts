@@ -59,7 +59,7 @@ export async function seed(db: Db, now = new Date()) {
       status: 'active',
       createdAt: new Date(now.getTime() - HISTORY_DAYS * DAY),
     });
-    images.push({ productId, url: `/products/${slug}.webp`, alt: p.name, position: 0 });
+    images.push({ productId, url: `/products/${slug}.svg`, alt: p.name, position: 0 });
 
     const skuBase = slug.replace(/-/g, '').slice(0, 6).toUpperCase();
     if (p.kind === 'plant') {
