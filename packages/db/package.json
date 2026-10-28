@@ -12,7 +12,8 @@
     "seed": "tsx --env-file=../../.env src/cli.ts seed",
     "reset": "tsx --env-file=../../.env src/cli.ts reset",
     "generate": "drizzle-kit generate",
-    "build": "tsc"
+    "build": "tsc",
+    "images": "tsx scripts/generate-product-images.ts"
   },
   "devDependencies": {
     "@plantify/config": "workspace:*",
