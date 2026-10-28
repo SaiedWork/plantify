@@ -4,6 +4,7 @@ import { sql, type SQL } from 'drizzle-orm';
 import { AuditService } from '../audit/audit.service.js';
 import { offsetOf } from '../common/db-errors.js';
 import { InjectDb, type Db } from '../db/db.module.js';
+import { WebhookDispatcher } from '../webhooks/webhook-dispatcher.service.js';
 
 type Row = {
   variant_id: string;
@@ -31,6 +32,7 @@ export class AdminInventoryService {
   constructor(
     @InjectDb() private readonly db: Db,
     private readonly audit: AuditService,
+    private readonly webhooks: WebhookDispatcher,
   ) {}
 
   async list(query: InventoryQuery): Promise<Page<InventoryRow>> {
@@ -55,11 +57,14 @@ export class AdminInventoryService {
   }
 
   async adjust(actorId: string, variantId: string, input: AdjustStockInput): Promise<InventoryRow> {
+    let crossedLow = false;
     await this.db.transaction(async (tx) => {
-      const { rows } = await tx.execute<{ on_hand: number }>(
-        sql`select on_hand from inventory_level where variant_id = ${variantId} for update`,
-      );
+      const { rows } = await tx.execute<{ on_hand: number; threshold: number }>(sql`
+        select l.on_hand, v.low_stock_threshold as threshold
+        from inventory_level l join product_variant v on v.id = l.variant_id
+        where l.variant_id = ${variantId} for update of l`);
       if (!rows[0]) throw new NotFoundException('Variant not found');
+      crossedLow = rows[0].on_hand > rows[0].threshold && rows[0].on_hand + input.delta <= rows[0].threshold;
       if (rows[0].on_hand + input.delta < 0) {
         throw new ConflictException(`Only ${rows[0].on_hand} in stock, so you can't remove ${-input.delta}`);
       }
@@ -69,6 +74,7 @@ export class AdminInventoryService {
         values (${crypto.randomUUID()}, ${variantId}, ${input.delta}, ${input.reason}, ${actorId}, ${input.note ?? null})`);
       await this.audit.log(actorId, 'inventory.adjust', variantId, { delta: input.delta, reason: input.reason }, tx);
     });
+    if (crossedLow) await this.webhooks.emitInventoryLow([variantId]);
     return this.one(variantId);
   }
 

@@ -15,6 +15,13 @@
       "when": 1793197337699,
       "tag": "0001_cart_item_unique",
       "breakpoints": true
+    },
+    {
+      "idx": 2,
+      "version": "7",
+      "when": 1793200887859,
+      "tag": "0002_webhook_delivery_log",
+      "breakpoints": true
     }
   ]
 }

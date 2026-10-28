@@ -12,12 +12,14 @@ import { sql, type SQL } from 'drizzle-orm';
 import { AuditService } from '../audit/audit.service.js';
 import { offsetOf } from '../common/db-errors.js';
 import { InjectDb, type Db } from '../db/db.module.js';
+import { WebhookDispatcher } from '../webhooks/webhook-dispatcher.service.js';
 
 @Injectable()
 export class AdminOrdersService {
   constructor(
     @InjectDb() private readonly db: Db,
     private readonly audit: AuditService,
+    private readonly webhooks: WebhookDispatcher,
   ) {}
 
   async list(query: AdminOrderQuery): Promise<Page<AdminOrderListItem>> {
@@ -159,6 +161,8 @@ export class AdminOrdersService {
       }
       await this.audit.log(actorId, 'order.status', id, { from: current, to: target }, tx);
     });
+    if (target === 'shipped') await this.webhooks.emitOrder('order.shipped', id);
+    if (target === 'delivered') await this.webhooks.emitOrder('order.delivered', id);
     return this.get(id);
   }
 
@@ -195,6 +199,7 @@ export class AdminOrdersService {
       await tx.execute(sql`update "order" set status = 'refunded', updated_at = now() where id = ${id}`);
       await this.audit.log(actorId, 'order.refund', id, { from: order.status, restock: input.restock, amountCents: order.total_cents }, tx);
     });
+    await this.webhooks.emitOrder('order.refunded', id);
     return this.get(id);
   }
 }

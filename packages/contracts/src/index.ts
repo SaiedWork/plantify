@@ -5,3 +5,4 @@ export * from './payments.js';
 export * from './cart.js';
 export * from './orders.js';
 export * from './admin.js';
+export * from './ops.js';
