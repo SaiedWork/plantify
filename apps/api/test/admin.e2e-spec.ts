@@ -219,7 +219,7 @@ describe('Admin API (e2e)', () => {
       await catalog.delete(`/api/admin/variants/${variantId}`).expect(409);
     });
 
-    it('manages images with a 5-image cap and a primary image', async () => {
+    it('manages images with a 4-image cap and a primary image', async () => {
       const p = await newProduct(1);
       const first = await catalog.post(`/api/admin/products/${p.id}/images`).send({ url: '/products/monstera-deliciosa.svg', alt: 'One' }).expect(201);
       expect(first.body.images).toHaveLength(1);
@@ -232,13 +232,13 @@ describe('Admin API (e2e)', () => {
       await catalog.post(`/api/admin/products/${p.id}/images`).send({ url: 'http://insecure.example.com/x.jpg' }).expect(400);
       await catalog.post(`/api/admin/products/${p.id}/images`).send({ url: 'javascript:alert(1)' }).expect(400);
 
-      for (let i = 0; i < 3; i++) {
+      for (let i = 0; i < 2; i++) {
         await catalog.post(`/api/admin/products/${p.id}/images`).send({ url: `/products/aloe-vera.svg` }).expect(201);
       }
       await catalog.post(`/api/admin/products/${p.id}/images`).send({ url: '/products/aloe-vera.svg' }).expect(409);
 
       const removed = await catalog.delete(`/api/admin/images/${secondImage.id}`).expect(200);
-      expect(removed.body.images).toHaveLength(4);
+      expect(removed.body.images).toHaveLength(3);
     });
 
     it('lists with search and status filters', async () => {
