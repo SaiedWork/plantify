@@ -71,7 +71,7 @@ export default function StaffPage() {
                       />
                     )}
                   </Td>
-                  <Td>{formatDate(s.createdAt)}</Td>
+                  <Td className="whitespace-nowrap">{formatDate(s.createdAt)}</Td>
                 </tr>
               ))}
             </tbody>
