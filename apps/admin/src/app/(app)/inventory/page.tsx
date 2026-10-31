@@ -6,7 +6,9 @@ import type { InventoryRow, Page, StockMovement } from "@plantify/contracts";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { Select } from "@/components/ui/select";
+import { Checkbox } from "@/components/ui/checkbox";
 import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
 import { SearchInput } from "@/components/ui/search-input";
 import { Badge, EmptyState, ErrorState, PageHeader, Pager, TableToolbar, RequirePermission, Skeleton, TableShell, Td, Th } from "@/components/page-bits";
 import { api, errorMessage, qs } from "@/lib/api-client";
@@ -19,10 +21,10 @@ function History({ variantId }: { variantId: string }) {
   if (loading) return <Skeleton className="h-16" />;
   if (!data || data.length === 0) return <p className="text-sm text-muted-foreground">No movements yet.</p>;
   return (
-    <ul className="max-h-56 divide-y overflow-y-auto rounded-lg border bg-background text-xs">
+    <ul className="max-h-[calc(3*2rem+2px)] divide-y overflow-y-auto rounded-lg border bg-background text-xs">
       {data.map((m) => (
-        <li key={m.id} className="flex items-center justify-between gap-3 px-3 py-1.5">
-          <span className={cn("w-10 font-medium", m.delta < 0 ? "text-destructive" : "text-green-700")}>{m.delta > 0 ? `+${m.delta}` : m.delta}</span>
+        <li key={m.id} className="flex h-8 shrink-0 items-center justify-between gap-3 px-3">
+          <span className={cn("w-10 font-medium", m.delta < 0 ? "text-destructive" : "text-green-700 dark:text-green-400")}>{m.delta > 0 ? `+${m.delta}` : m.delta}</span>
           <span className="w-20 capitalize">{m.reason}</span>
           <span className="flex-1 truncate text-muted-foreground">{m.note ?? (m.orderId ? "Order" : "")}</span>
           <span className="text-muted-foreground">{m.actorName ?? "System"}</span>
@@ -59,28 +61,28 @@ function AdjustPanel({ row, onDone }: { row: InventoryRow; onDone: () => void })
 
   return (
     <div className="space-y-3 bg-muted/30 p-3">
-      <form onSubmit={submit} className="flex flex-wrap items-end gap-2">
-        <label className="space-y-1 text-xs">
-          Change (+/−)
-          <Input value={delta} onChange={(e) => setDelta(e.target.value)} inputMode="numeric" placeholder="+10 or -2" className="h-8 w-28" required />
-        </label>
-        <label className="space-y-1 text-xs">
-          Reason
+      <form onSubmit={submit} className="flex flex-wrap items-end gap-3">
+        <div className="space-y-1.5">
+          <Label htmlFor={`delta-${row.variantId}`} className="text-xs">Change (+/−)</Label>
+          <Input id={`delta-${row.variantId}`} value={delta} onChange={(e) => setDelta(e.target.value)} inputMode="numeric" placeholder="+10 or -2" className="w-28" required />
+        </div>
+        <div className="space-y-1.5">
+          <Label htmlFor={`reason-${row.variantId}`} className="text-xs">Reason</Label>
           <Select
+            id={`reason-${row.variantId}`}
             value={reason}
             onValueChange={(v) => setReason(v as "restock" | "adjustment")}
             options={[
               { value: "restock", label: "Restock" },
               { value: "adjustment", label: "Adjustment / damage" },
             ]}
-            className="flex h-8 w-full"
           />
-        </label>
-        <label className="flex-1 space-y-1 text-xs">
-          Note (optional)
-          <Input value={note} onChange={(e) => setNote(e.target.value)} maxLength={200} className="h-8 min-w-48" />
-        </label>
-        <Button type="submit" size="sm" disabled={busy}>
+        </div>
+        <div className="min-w-48 flex-1 space-y-1.5">
+          <Label htmlFor={`note-${row.variantId}`} className="text-xs">Note (optional)</Label>
+          <Input id={`note-${row.variantId}`} value={note} onChange={(e) => setNote(e.target.value)} maxLength={200} />
+        </div>
+        <Button type="submit" disabled={busy}>
           Apply
         </Button>
       </form>
@@ -114,17 +116,17 @@ function InventoryTable() {
           className="max-w-xs"
           aria-label="Search inventory"
         />
-        <label className="flex items-center gap-2 text-sm">
-          <input
-            type="checkbox"
+        <Label htmlFor="low-only" className="h-8 cursor-pointer">
+          <Checkbox
+            id="low-only"
             checked={lowOnly}
-            onChange={(e) => {
-              router.replace(e.target.checked ? "/inventory?lowStock=true" : "/inventory");
+            onCheckedChange={(checked) => {
+              router.replace(checked ? "/inventory?lowStock=true" : "/inventory");
               setPage(1);
             }}
           />
           Low or out of stock only
-        </label>
+        </Label>
       </TableToolbar>
       {loading && !data ? (
         <Skeleton />
@@ -148,13 +150,13 @@ function InventoryTable() {
               {data.items.map((r) => (
                 <Fragment key={r.variantId}>
                   <tr className="hover:bg-muted/40">
-                    <Td>
+                    <Td clamp className="min-w-52">
                       {r.productName} <span className="text-muted-foreground">· {r.label}</span>
                     </Td>
-                    <Td className="font-mono text-xs">{r.sku}</Td>
-                    <Td right>
+                    <Td className="font-mono text-xs whitespace-nowrap">{r.sku}</Td>
+                    <Td right className="whitespace-nowrap">
                       <span className="mr-2 font-medium">{r.onHand}</span>
-                      {r.onHand === 0 ? <Badge className="bg-rose-100 text-rose-900">out</Badge> : r.isLow ? <Badge className="bg-amber-100 text-amber-900">low</Badge> : null}
+                      {r.onHand === 0 ? <Badge className="bg-rose-100 text-rose-900 dark:bg-rose-500/20 dark:text-rose-300">out</Badge> : r.isLow ? <Badge className="bg-amber-100 text-amber-900 dark:bg-amber-500/20 dark:text-amber-300">low</Badge> : null}
                     </Td>
                     <Td right>{r.lowStockThreshold}</Td>
                     <Td right>
