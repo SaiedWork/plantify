@@ -14,8 +14,8 @@ export const DEMO_STAFF_PASSWORD = 'plantify-demo';
 
 export const STAFF = [
   { name: 'Olivia Owner', email: 'owner@plantify.test', role: 'owner' as const },
-  { name: 'Carlos Catalog', email: 'catalog@plantify.test', role: 'catalog_manager' as const },
-  { name: 'Olga Orders', email: 'orders@plantify.test', role: 'order_manager' as const },
+  { name: 'Steve Catalog', email: 'catalog@plantify.test', role: 'catalog_manager' as const },
+  { name: 'Maria Orders', email: 'orders@plantify.test', role: 'order_manager' as const },
 ];
 
 type OrderStatus = (typeof s.ORDER_STATUSES)[number];

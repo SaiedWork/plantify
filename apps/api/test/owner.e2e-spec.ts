@@ -239,7 +239,7 @@ describe('Dashboard, staff and audit (e2e)', () => {
         await orders.get('/api/admin/products').expect(403);
         const res = await owner.patch(`/api/admin/staff/${olga}`).send({ role: 'catalog_manager' }).expect(200);
         expect(res.body).toMatchObject({ email: 'orders@plantify.test', role: 'catalog_manager' });
-        expect(await roleOf('catalog@plantify.test')).toBe('order_manager'); // Carlos took Olga's old role
+        expect(await roleOf('catalog@plantify.test')).toBe('order_manager'); // Steve took Maria's old role
         await orders.get('/api/admin/products').expect(200);
         await orders.get('/api/admin/customers').expect(403);
         await catalog.get('/api/admin/products').expect(403);

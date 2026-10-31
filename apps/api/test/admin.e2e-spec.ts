@@ -306,7 +306,7 @@ describe('Admin API (e2e)', () => {
 
       const history = await catalog.get(`/api/admin/inventory/${variantId}/movements`).expect(200);
       expect(history.body.map((m: { delta: number }) => m.delta)).toEqual([-3, 6, 4]);
-      expect(history.body[0]).toMatchObject({ reason: 'adjustment', note: 'Damaged', actorName: 'Carlos Catalog' });
+      expect(history.body[0]).toMatchObject({ reason: 'adjustment', note: 'Damaged', actorName: 'Steve Catalog' });
     });
 
     it('does not lose updates under concurrent adjustments', async () => {
