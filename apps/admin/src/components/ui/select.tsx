@@ -33,7 +33,7 @@ function Select({ value, onValueChange, options, id, disabled, title, className,
         aria-label={ariaLabel}
         data-slot="select-trigger"
         className={cn(
-          "flex h-9 w-fit min-w-36 items-center justify-between gap-3 rounded-lg border border-input bg-transparent py-1 pr-3 pl-3 text-sm whitespace-nowrap transition-colors outline-none select-none focus-visible:border-ring focus-visible:ring-3 focus-visible:ring-ring/50 disabled:cursor-not-allowed disabled:opacity-50 dark:bg-input/30 dark:hover:bg-input/50",
+          "flex h-8 w-fit min-w-36 items-center justify-between gap-3 rounded-lg border border-input bg-transparent py-1 pr-3 pl-3 text-sm whitespace-nowrap transition-colors outline-none select-none focus-visible:border-ring focus-visible:ring-3 focus-visible:ring-ring/50 disabled:cursor-not-allowed disabled:opacity-50 dark:bg-input/30 dark:hover:bg-input/50",
           className
         )}
       >

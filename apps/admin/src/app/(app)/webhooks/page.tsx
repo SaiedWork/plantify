@@ -8,7 +8,7 @@ import { Button } from "@/components/ui/button";
 import { Select } from "@/components/ui/select";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Badge, EmptyState, PageHeader, Pager, RequirePermission, Skeleton, TableShell, Td, Th } from "@/components/page-bits";
+import { Badge, EmptyState, PageHeader, Pager, TableToolbar, RequirePermission, Skeleton, TableShell, Td, Th } from "@/components/page-bits";
 import { api, errorMessage, qs } from "@/lib/api-client";
 import { formatDateTime } from "@/lib/format";
 import { useApi } from "@/lib/use-api";
@@ -221,7 +221,7 @@ function Deliveries({ endpoints, version }: { endpoints: WebhookEndpointView[]; 
   return (
     <section className="space-y-3">
       <h2 className="font-semibold">Delivery log</h2>
-      <div className="flex flex-wrap gap-2">
+      <TableToolbar total={data?.total} className="mb-0">
         <Select
           value={endpointId}
           onValueChange={(v) => {
@@ -245,10 +245,10 @@ function Deliveries({ endpoints, version }: { endpoints: WebhookEndpointView[]; 
           ]}
           aria-label="Filter by status"
         />
-        <Button size="sm" variant="outline" onClick={reload}>
+        <Button variant="outline" onClick={reload}>
           Refresh
         </Button>
-      </div>
+      </TableToolbar>
       {loading && !data ? (
         <Skeleton className="h-40" />
       ) : !data || data.items.length === 0 ? (

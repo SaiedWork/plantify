@@ -7,7 +7,8 @@ import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { Select } from "@/components/ui/select";
 import { Input } from "@/components/ui/input";
-import { Badge, EmptyState, ErrorState, PageHeader, Pager, RequirePermission, Skeleton, TableShell, Td, Th } from "@/components/page-bits";
+import { SearchInput } from "@/components/ui/search-input";
+import { Badge, EmptyState, ErrorState, PageHeader, Pager, TableToolbar, RequirePermission, Skeleton, TableShell, Td, Th } from "@/components/page-bits";
 import { api, errorMessage, qs } from "@/lib/api-client";
 import { formatDateTime } from "@/lib/format";
 import { useApi, useDebounced } from "@/lib/use-api";
@@ -102,12 +103,12 @@ function InventoryTable() {
 
   return (
     <>
-      <div className="mb-4 flex flex-wrap items-center gap-3">
-        <Input
+      <TableToolbar total={data?.total} className="gap-3">
+        <SearchInput
           placeholder="Search by product or SKU…"
           value={q}
-          onChange={(e) => {
-            setQ(e.target.value);
+          onValueChange={(value) => {
+            setQ(value);
             setPage(1);
           }}
           className="max-w-xs"
@@ -124,7 +125,7 @@ function InventoryTable() {
           />
           Low or out of stock only
         </label>
-      </div>
+      </TableToolbar>
       {loading && !data ? (
         <Skeleton />
       ) : error ? (

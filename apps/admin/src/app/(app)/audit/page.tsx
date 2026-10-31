@@ -4,7 +4,7 @@ import { Fragment, useState } from "react";
 import type { AuditEntry, Page } from "@plantify/contracts";
 import { Button } from "@/components/ui/button";
 import { Select } from "@/components/ui/select";
-import { EmptyState, ErrorState, PageHeader, Pager, RequirePermission, Skeleton, TableShell, Td, Th } from "@/components/page-bits";
+import { EmptyState, ErrorState, PageHeader, Pager, TableToolbar, RequirePermission, Skeleton, TableShell, Td, Th } from "@/components/page-bits";
 import { qs } from "@/lib/api-client";
 import { formatDateTime } from "@/lib/format";
 import { useApi } from "@/lib/use-api";
@@ -30,7 +30,7 @@ export default function AuditPage() {
   return (
     <RequirePermission permission="staff:manage">
       <PageHeader title="Audit log" description="Who changed what. Entries are append-only and cleared with the weekly demo reset." />
-      <div className="mb-4 flex gap-2">
+      <TableToolbar total={data?.total}>
         <Select
           value={action}
           onValueChange={(v) => {
@@ -40,10 +40,10 @@ export default function AuditPage() {
           options={AREAS.map(([value, label]) => ({ value, label }))}
           aria-label="Filter by area"
         />
-        <Button size="sm" variant="outline" onClick={reload}>
+        <Button variant="outline" onClick={reload}>
           Refresh
         </Button>
-      </div>
+      </TableToolbar>
       {loading && !data ? (
         <Skeleton />
       ) : error ? (

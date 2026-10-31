@@ -3,8 +3,8 @@
 import Link from "next/link";
 import { useState } from "react";
 import type { CustomerListItem, Page } from "@plantify/contracts";
-import { Input } from "@/components/ui/input";
-import { EmptyState, ErrorState, PageHeader, Pager, RequirePermission, Skeleton, TableShell, Td, Th } from "@/components/page-bits";
+import { SearchInput } from "@/components/ui/search-input";
+import { EmptyState, ErrorState, PageHeader, Pager, TableToolbar, RequirePermission, Skeleton, TableShell, Td, Th } from "@/components/page-bits";
 import { qs } from "@/lib/api-client";
 import { formatDate, formatPrice } from "@/lib/format";
 import { useApi, useDebounced } from "@/lib/use-api";
@@ -18,16 +18,18 @@ export default function CustomersPage() {
   return (
     <RequirePermission permission="customers:view">
       <PageHeader title="Customers" description="Sorted by lifetime spend. Cancelled and refunded orders are not counted." />
-      <Input
-        placeholder="Search by name or email…"
-        value={q}
-        onChange={(e) => {
-          setQ(e.target.value);
-          setPage(1);
-        }}
-        className="mb-4 max-w-sm"
-        aria-label="Search customers"
-      />
+      <TableToolbar total={data?.total}>
+        <SearchInput
+          placeholder="Search by name or email…"
+          value={q}
+          onValueChange={(value) => {
+            setQ(value);
+            setPage(1);
+          }}
+          className="max-w-sm"
+          aria-label="Search customers"
+        />
+      </TableToolbar>
       {loading && !data ? (
         <Skeleton />
       ) : error ? (

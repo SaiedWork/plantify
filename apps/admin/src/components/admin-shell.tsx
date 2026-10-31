@@ -1,7 +1,7 @@
 'use client';
 
 import { Dialog } from '@base-ui/react/dialog';
-import { AppHeader } from '@/components/app-header';
+import { AppHeader, BreadcrumbLabelContext } from '@/components/app-header';
 import { Button } from '@/components/ui/button';
 import { authClient } from '@/lib/auth-client';
 import { useApi } from '@/lib/use-api';
@@ -106,6 +106,7 @@ function SidebarContent({ onNavigate }: { onNavigate?: () => void }) {
 export function AdminShell({ children }: { children: ReactNode }) {
 	const router = useRouter();
 	const [menuOpen, setMenuOpen] = useState(false);
+	const [crumbLabel, setCrumbLabel] = useState<string | null>(null);
 	const { data: me, error } = useApi<Me>('/me');
 
 	// Not signed in, or a customer session slipped through: back to the login page.
@@ -120,6 +121,7 @@ export function AdminShell({ children }: { children: ReactNode }) {
 
 	return (
 		<MeContext.Provider value={{ me, can }}>
+			<BreadcrumbLabelContext.Provider value={setCrumbLabel}>
 			<div className="min-h-[calc(100vh-1.75rem)] md:pl-[220px] print:min-h-0">
 				<a
 					href="#main"
@@ -127,7 +129,7 @@ export function AdminShell({ children }: { children: ReactNode }) {
 				>
 					Skip to content
 				</a>
-				<AppHeader onOpenMenu={() => setMenuOpen(true)} />
+				<AppHeader onOpenMenu={() => setMenuOpen(true)} lastLabel={crumbLabel} />
 				<aside className="fixed bottom-0 left-0 top-7 hidden w-[220px] flex-col overflow-y-auto border-r bg-muted/30 md:flex print:top-0">
 					<SidebarContent />
 				</aside>
@@ -151,6 +153,7 @@ export function AdminShell({ children }: { children: ReactNode }) {
 				</Dialog.Root>
 				<main id="main" tabIndex={-1} className="mx-auto w-full min-w-0 max-w-7xl p-4 outline-none md:p-8">{children}</main>
 			</div>
+			</BreadcrumbLabelContext.Provider>
 		</MeContext.Provider>
 	);
 }
