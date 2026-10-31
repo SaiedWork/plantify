@@ -1,5 +1,6 @@
 "use client";
 
+import { Leaf } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { useState } from "react";
 import { STAFF_ROLES } from "@plantify/contracts";
@@ -37,10 +38,13 @@ export default function LoginPage() {
   }
 
   return (
-    <div className="mx-auto flex min-h-screen max-w-md items-center px-4">
+    <div className="mx-auto flex min-h-[calc(100vh-1.75rem)] max-w-md flex-col items-center justify-center gap-4 px-4">
+      <div className="flex items-center gap-2 text-base font-semibold text-green-800 dark:text-green-400">
+        <Leaf className="size-5" /> Plantify
+      </div>
       <Card className="w-full">
         <CardHeader>
-          <CardTitle role="heading" aria-level={1}>Plantify Admin</CardTitle>
+          <CardTitle role="heading" aria-level={1}>Admin sign in</CardTitle>
           <CardDescription>Internal back office. This is a demo with fake data.</CardDescription>
         </CardHeader>
         <CardContent>

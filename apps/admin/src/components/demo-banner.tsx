@@ -12,7 +12,7 @@ function resetText(days: number | null | undefined) {
 export function DemoBanner() {
   const { data } = useApi<DemoStatus>("/demo/status");
   return (
-    <div className="bg-amber-100 print:hidden px-4 py-1.5 text-center text-xs text-amber-900">
+    <div className="fixed inset-x-0 top-0 z-40 flex h-7 items-center justify-center bg-amber-100 px-4 text-center text-xs text-amber-900 print:hidden">
       Demo back office: all data is fake and {resetText(data?.daysUntilReset)}.
     </div>
   );
