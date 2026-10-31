@@ -141,7 +141,7 @@ function Details({
 						className="w-full min-w-0"
 					/>
 				</div>
-				<Label htmlFor="featured" className="col-span-2 h-8 cursor-pointer @lg:col-span-1 mb-2">
+				<Label htmlFor="featured" className="col-span-2 h-8 cursor-pointer @lg:col-span-1">
 					<Checkbox
 						id="featured"
 						checked={featured}
@@ -308,7 +308,12 @@ function Variants({ product, reload }: { product: AdminProductDetail; reload: ()
 			() =>
 				api(`/admin/products/${product.id}/variants`, {
 					method: 'POST',
-					json: { label: label.trim(), priceCents, initialStock: Number(stock), lowStockThreshold: Number(threshold) },
+					json: {
+						label: label.trim(),
+						priceCents,
+						initialStock: Number(stock),
+						lowStockThreshold: Number(threshold),
+					},
 				}),
 			'Variant added',
 		);

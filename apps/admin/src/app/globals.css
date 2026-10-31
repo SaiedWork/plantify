@@ -127,6 +127,19 @@
   html {
     @apply font-sans;
   }
+  /* Tailwind 4 stopped giving buttons a pointer cursor. Set it once here for every interactive element
+     (buttons, Base UI checkboxes, selects and menu items), so components do not each need the class. */
+  button:not(:disabled),
+  [role="button"]:not([aria-disabled="true"]),
+  [role="checkbox"]:not([aria-disabled="true"]),
+  [role="combobox"]:not([aria-disabled="true"]),
+  [role="option"]:not([aria-disabled="true"]),
+  [role="menuitem"]:not([aria-disabled="true"]),
+  [role="tab"]:not([aria-disabled="true"]),
+  summary,
+  label:has(> [role="checkbox"]:not([aria-disabled="true"])) {
+    cursor: pointer;
+  }
 }
 /* Chart tokens: the validated reference palette, selected (not inverted) per mode. */
 .viz-root {
