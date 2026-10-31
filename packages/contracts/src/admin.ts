@@ -79,7 +79,7 @@ export const productPatchSchema = z
   .partial();
 
 export const addImageSchema = z.object({ url: imageUrl, alt: z.string().trim().max(160).default('') });
-export const MAX_IMAGES_PER_PRODUCT = 5;
+export const MAX_IMAGES_PER_PRODUCT = 4;
 
 export type AdminProductListItem = {
   id: string;

@@ -103,7 +103,7 @@ Two tiers, so the demo never depends on storage for its core experience:
   - `LocalDiskProvider` for dev (writes to `./.uploads`, served by the API at `/uploads/*`; no extra Docker container). A MinIO container is the alternative if you want an S3-API demo, but it adds weight for little gain.
   - `VercelBlobProvider` for prod.
   - Flow: admin requests a signed upload from the API (role-checked: owner or catalog_manager) -> browser uploads directly to Blob (bypasses the 4.5 MB serverless body limit) -> API stores the returned URL in `product_image`.
-  - Limits: JPEG/PNG/WebP only, <= 1 MB (client-side resize before upload), max 5 images per product, magic-byte check server-side, random object keys under `uploads/`.
+  - Limits: JPEG/PNG/WebP only, <= 1 MB (client-side resize before upload), max 4 images per product, magic-byte check server-side, random object keys under `uploads/`.
   - **Reset**: the 7-day reset also lists and deletes everything under `uploads/`, so storage never fills up. Rows that referenced them are wiped anyway.
   - `next.config` `remotePatterns` allows the Blob host.
 - Fallback if Blob limits change or are awkward: Cloudflare R2 behind the same interface (S3 API; free tier is bigger but may ask for a card), or drop uploads and keep only the preset gallery. Verify current Blob free-tier limits at implementation time.
