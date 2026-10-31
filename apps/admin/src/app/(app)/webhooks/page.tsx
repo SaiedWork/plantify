@@ -5,9 +5,10 @@ import type { Page, WebhookDeliveryView, WebhookEndpointView, WebhookEventType }
 import { WEBHOOK_EVENTS } from "@plantify/contracts";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
+import { Select } from "@/components/ui/select";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Badge, EmptyState, PageHeader, Pager, RequirePermission, selectClass, Skeleton, TableShell, Td, Th } from "@/components/page-bits";
+import { Badge, EmptyState, PageHeader, Pager, RequirePermission, Skeleton, TableShell, Td, Th } from "@/components/page-bits";
 import { api, errorMessage, qs } from "@/lib/api-client";
 import { formatDateTime } from "@/lib/format";
 import { useApi } from "@/lib/use-api";
@@ -201,7 +202,7 @@ function Deliveries({ endpoints, version }: { endpoints: WebhookEndpointView[]; 
   const [page, setPage] = useState(1);
   const [open, setOpen] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
-  const { data, loading, reload } = useApi<Page<WebhookDeliveryView>>(`/admin/webhooks/deliveries${qs({ endpointId, status, page, pageSize: 10, v: version })}`);
+  const { data, loading, reload } = useApi<Page<WebhookDeliveryView>>(`/admin/webhooks/deliveries${qs({ endpointId, status, page, pageSize: 15, v: version })}`);
 
   async function resend(id: string) {
     setBusy(true);
@@ -221,20 +222,29 @@ function Deliveries({ endpoints, version }: { endpoints: WebhookEndpointView[]; 
     <section className="space-y-3">
       <h2 className="font-semibold">Delivery log</h2>
       <div className="flex flex-wrap gap-2">
-        <select value={endpointId} onChange={(e) => { setEndpointId(e.target.value); setPage(1); }} className={selectClass} aria-label="Filter by endpoint">
-          <option value="">All endpoints</option>
-          {endpoints.map((ep) => (
-            <option key={ep.id} value={ep.id}>
-              {ep.url.replace(/^https?:\/\//, "").slice(0, 40)}
-            </option>
-          ))}
-        </select>
-        <select value={status} onChange={(e) => { setStatus(e.target.value); setPage(1); }} className={selectClass} aria-label="Filter by status">
-          <option value="">Any status</option>
-          <option value="delivered">Delivered</option>
-          <option value="failed">Failed</option>
-          <option value="pending">Pending</option>
-        </select>
+        <Select
+          value={endpointId}
+          onValueChange={(v) => {
+            setEndpointId(v);
+            setPage(1);
+          }}
+          options={[{ value: "", label: "All endpoints" }, ...endpoints.map((ep) => ({ value: ep.id, label: ep.url.replace(/^https?:\/\//, "").slice(0, 40) }))]}
+          aria-label="Filter by endpoint"
+        />
+        <Select
+          value={status}
+          onValueChange={(v) => {
+            setStatus(v);
+            setPage(1);
+          }}
+          options={[
+            { value: "", label: "Any status" },
+            { value: "delivered", label: "Delivered" },
+            { value: "failed", label: "Failed" },
+            { value: "pending", label: "Pending" },
+          ]}
+          aria-label="Filter by status"
+        />
         <Button size="sm" variant="outline" onClick={reload}>
           Refresh
         </Button>

@@ -5,7 +5,8 @@ import { useState } from "react";
 import type { AdminOrderListItem, OrderStatus, Page } from "@plantify/contracts";
 import { ORDER_STATUSES } from "@plantify/contracts";
 import { Input } from "@/components/ui/input";
-import { EmptyState, OrderBadge, orderStatusLabel, PageHeader, Pager, RequirePermission, selectClass, Skeleton, TableShell, Td, Th } from "@/components/page-bits";
+import { Select } from "@/components/ui/select";
+import { EmptyState, OrderBadge, orderStatusLabel, PageHeader, Pager, RequirePermission, Skeleton, TableShell, Td, Th } from "@/components/page-bits";
 import { qs } from "@/lib/api-client";
 import { formatDateTime, formatPrice } from "@/lib/format";
 import { useApi, useDebounced } from "@/lib/use-api";
@@ -15,7 +16,7 @@ export default function OrdersPage() {
   const [status, setStatus] = useState<OrderStatus | "">("");
   const [page, setPage] = useState(1);
   const search = useDebounced(q);
-  const { data, loading } = useApi<Page<AdminOrderListItem>>(`/admin/orders${qs({ q: search, status, page, pageSize: 20 })}`);
+  const { data, loading } = useApi<Page<AdminOrderListItem>>(`/admin/orders${qs({ q: search, status, page, pageSize: 15 })}`);
 
   return (
     <RequirePermission permission="orders:view">
@@ -31,22 +32,15 @@ export default function OrdersPage() {
           className="max-w-sm"
           aria-label="Search orders"
         />
-        <select
+        <Select
           value={status}
-          onChange={(e) => {
-            setStatus(e.target.value as OrderStatus | "");
+          onValueChange={(v) => {
+            setStatus(v as OrderStatus | "");
             setPage(1);
           }}
-          className={selectClass}
+          options={[{ value: "", label: "All statuses" }, ...ORDER_STATUSES.map((s) => ({ value: s, label: orderStatusLabel(s) }))]}
           aria-label="Filter by status"
-        >
-          <option value="">All statuses</option>
-          {ORDER_STATUSES.map((s) => (
-            <option key={s} value={s}>
-              {orderStatusLabel(s)}
-            </option>
-          ))}
-        </select>
+        />
       </div>
       {loading && !data ? (
         <Skeleton />

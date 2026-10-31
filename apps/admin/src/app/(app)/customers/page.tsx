@@ -13,7 +13,7 @@ export default function CustomersPage() {
   const [q, setQ] = useState("");
   const [page, setPage] = useState(1);
   const search = useDebounced(q);
-  const { data, loading } = useApi<Page<CustomerListItem>>(`/admin/customers${qs({ q: search, page, pageSize: 20 })}`);
+  const { data, loading } = useApi<Page<CustomerListItem>>(`/admin/customers${qs({ q: search, page, pageSize: 15 })}`);
 
   return (
     <RequirePermission permission="customers:view">

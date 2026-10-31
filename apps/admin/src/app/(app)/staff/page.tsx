@@ -8,7 +8,8 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { useMe } from "@/components/admin-shell";
-import { EmptyState, PageHeader, RequirePermission, selectClass, Skeleton, TableShell, Td, Th } from "@/components/page-bits";
+import { Select } from "@/components/ui/select";
+import { EmptyState, PageHeader, RequirePermission, Skeleton, TableShell, Td, Th } from "@/components/page-bits";
 import { api, errorMessage } from "@/lib/api-client";
 import { formatDate } from "@/lib/format";
 import { useApi } from "@/lib/use-api";
@@ -70,20 +71,14 @@ export default function StaffPage() {
                       <span className="block text-xs text-muted-foreground">{s.email}</span>
                     </Td>
                     <Td>
-                      <select
+                      <Select
                         value={s.role}
                         disabled={busy || isMe}
                         title={isMe ? "You can't change your own role" : undefined}
-                        onChange={(e) => act(() => api(`/admin/staff/${s.id}`, { method: "PATCH", json: { role: e.target.value } }), "Role updated")}
-                        className={selectClass}
+                        onValueChange={(role) => act(() => api(`/admin/staff/${s.id}`, { method: "PATCH", json: { role } }), "Role updated")}
+                        options={STAFF_GRANTABLE_ROLES.map((r) => ({ value: r, label: ROLE_LABEL[r] }))}
                         aria-label={`Role for ${s.name}`}
-                      >
-                        {STAFF_GRANTABLE_ROLES.map((r) => (
-                          <option key={r} value={r}>
-                            {ROLE_LABEL[r]}
-                          </option>
-                        ))}
-                      </select>
+                      />
                     </Td>
                     <Td>{formatDate(s.createdAt)}</Td>
                     <Td right>
@@ -117,13 +112,12 @@ export default function StaffPage() {
               <Label htmlFor="staff-role" className="text-xs">
                 Role
               </Label>
-              <select id="staff-role" value={role} onChange={(e) => setRole(e.target.value as StaffMember["role"])} className={selectClass}>
-                {STAFF_GRANTABLE_ROLES.map((r) => (
-                  <option key={r} value={r}>
-                    {ROLE_LABEL[r]}
-                  </option>
-                ))}
-              </select>
+              <Select
+                id="staff-role"
+                value={role}
+                onValueChange={(v) => setRole(v as StaffMember["role"])}
+                options={STAFF_GRANTABLE_ROLES.map((r) => ({ value: r, label: ROLE_LABEL[r] }))}
+              />
             </div>
             <Button type="submit" disabled={busy || !email.trim()}>
               Grant access
