@@ -7,12 +7,13 @@ import { CartModule } from './cart/cart.module.js';
 import { CatalogModule } from './catalog/catalog.module.js';
 import { DbModule } from './db/db.module.js';
 import { HealthController } from './health.controller.js';
+import { InternalModule } from './internal/internal.module.js';
 import { MailModule } from './mail/mail.module.js';
 import { WebhooksModule } from './webhooks/webhooks.module.js';
 import { OrdersModule } from './orders/orders.module.js';
 
 @Module({
-  imports: [DbModule, AuditModule, MailModule, AuthModule, CatalogModule, CartModule, OrdersModule, AddressesModule, AdminModule, WebhooksModule],
+  imports: [DbModule, AuditModule, MailModule, AuthModule, CatalogModule, CartModule, OrdersModule, AddressesModule, AdminModule, WebhooksModule, InternalModule],
   controllers: [HealthController],
 })
 export class AppModule {}

@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { canTransition, computeTotals, evaluateDemoCard, productListQuerySchema, can, type CardInput } from './index.js';
+import { canTransition, computeTotals, evaluateDemoCard, productListQuerySchema, can, isResetDue, demoStatus, type CardInput } from './index.js';
 
 const card = (number: string, over: Partial<CardInput> = {}): CardInput => ({
   number,
@@ -73,5 +73,23 @@ describe('productListQuerySchema', () => {
   it('rejects unknown sorts and oversized pages', () => {
     expect(productListQuerySchema.safeParse({ sort: 'drop' }).success).toBe(false);
     expect(productListQuerySchema.safeParse({ pageSize: '500' }).success).toBe(false);
+  });
+});
+
+describe('demo reset schedule', () => {
+  const day = 24 * 60 * 60 * 1000;
+  const last = new Date('2026-01-01T00:00:00Z');
+
+  it('is due when never reset or at least 7 days old', () => {
+    expect(isResetDue(null)).toBe(true);
+    expect(isResetDue(last, new Date(last.getTime() + 7 * day))).toBe(true);
+    expect(isResetDue(last, new Date(last.getTime() + 7 * day - 1))).toBe(false);
+  });
+
+  it('counts whole days remaining, rounded up', () => {
+    expect(demoStatus(last, last).daysUntilReset).toBe(7);
+    expect(demoStatus(last, new Date(last.getTime() + 6.5 * day)).daysUntilReset).toBe(1);
+    expect(demoStatus(last, new Date(last.getTime() + 9 * day)).daysUntilReset).toBe(0);
+    expect(demoStatus(null).daysUntilReset).toBeNull();
   });
 });

@@ -1,9 +1,11 @@
-import { mkdir, writeFile } from 'node:fs/promises';
+import { mkdir, readdir, rm, writeFile } from 'node:fs/promises';
 import { join } from 'node:path';
 
 export interface StorageProvider {
   /** Stores the bytes and returns the public URL to put in `product_image.url`. */
   save(key: string, data: Buffer, contentType: string): Promise<string>;
+  /** Deletes every stored upload (used by the periodic demo reset) and returns how many were removed. */
+  deleteAll(): Promise<number>;
 }
 
 export const UPLOAD_DIR = join(process.cwd(), '.uploads');
@@ -17,6 +19,12 @@ export class LocalDiskStorage implements StorageProvider {
     await writeFile(path, data);
     return `${UPLOAD_URL_PREFIX}/${key}`;
   }
+
+  async deleteAll(): Promise<number> {
+    const entries = await readdir(UPLOAD_DIR, { recursive: true, withFileTypes: true }).catch(() => []);
+    await rm(UPLOAD_DIR, { recursive: true, force: true });
+    return entries.filter((e) => e.isFile()).length;
+  }
 }
 
 /** Production: Vercel Blob (free on the Hobby plan). Selected when BLOB_READ_WRITE_TOKEN is set. */
@@ -25,6 +33,19 @@ export class VercelBlobStorage implements StorageProvider {
     const { put } = await import('@vercel/blob');
     const blob = await put(`uploads/${key}`, data, { access: 'public', contentType, addRandomSuffix: false });
     return blob.url;
+  }
+
+  async deleteAll(): Promise<number> {
+    const { list, del } = await import('@vercel/blob');
+    let removed = 0;
+    let cursor: string | undefined;
+    do {
+      const page = await list({ prefix: 'uploads/', cursor });
+      if (page.blobs.length > 0) await del(page.blobs.map((b) => b.url));
+      removed += page.blobs.length;
+      cursor = page.hasMore ? page.cursor : undefined;
+    } while (cursor);
+    return removed;
   }
 }
 
