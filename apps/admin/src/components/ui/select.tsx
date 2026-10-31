@@ -21,6 +21,8 @@ type SelectProps = {
 /** shadcn-styled select menu (Base UI) with a native-select-like API. */
 function Select({ value, onValueChange, options, id, disabled, title, className, "aria-label": ariaLabel }: SelectProps) {
   return (
+    // Base UI adds a hidden sibling input; wrapping keeps the trigger the only child, so `space-y-*` parents don't add a margin to it.
+    <div className="contents">
     <SelectPrimitive.Root
       value={value}
       onValueChange={(v) => onValueChange(v ?? "")}
@@ -66,6 +68,7 @@ function Select({ value, onValueChange, options, id, disabled, title, className,
         </SelectPrimitive.Positioner>
       </SelectPrimitive.Portal>
     </SelectPrimitive.Root>
+    </div>
   )
 }
 
