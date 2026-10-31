@@ -1,7 +1,14 @@
-export const ROLES = ['customer', 'catalog_manager', 'owner'] as const;
+export const ROLES = ['customer', 'catalog_manager', 'order_manager', 'owner'] as const;
 export type Role = (typeof ROLES)[number];
 
-export const STAFF_ROLES = ['catalog_manager', 'owner'] as const satisfies readonly Role[];
+export const ROLE_LABELS: Record<Role, string> = {
+  customer: 'Customer',
+  catalog_manager: 'Catalog manager',
+  order_manager: 'Order manager',
+  owner: 'Owner',
+};
+
+export const STAFF_ROLES = ['catalog_manager', 'order_manager', 'owner'] as const satisfies readonly Role[];
 
 export type Permission =
   | 'catalog:manage'
@@ -18,13 +25,8 @@ export type Permission =
 
 export const PERMISSIONS: Record<Role, readonly Permission[]> = {
   customer: [],
-  catalog_manager: [
-    'catalog:manage',
-    'inventory:manage',
-    'orders:view',
-    'orders:fulfil',
-    'dashboard:stock',
-  ],
+  catalog_manager: ['catalog:manage', 'inventory:manage', 'dashboard:stock'],
+  order_manager: ['orders:view', 'orders:fulfil', 'customers:view'],
   owner: [
     'catalog:manage',
     'inventory:manage',

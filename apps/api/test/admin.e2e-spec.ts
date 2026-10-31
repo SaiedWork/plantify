@@ -20,7 +20,7 @@ describe('Admin API (e2e)', () => {
   let app: NestExpressApplication;
   let db: Db;
   const http = () => request(app.getHttpServer());
-  const staff = { owner: new Jar(), catalog: new Jar(), customer: new Jar() };
+  const staff = { owner: new Jar(), catalog: new Jar(), orders: new Jar(), customer: new Jar() };
   const as = (jar: Jar) => ({
     get: (url: string) => http().get(url).set('Cookie', jar.header()),
     post: (url: string) => http().post(url).set('Cookie', jar.header()),
@@ -29,6 +29,7 @@ describe('Admin API (e2e)', () => {
   });
   const owner = as(staff.owner);
   const catalog = as(staff.catalog);
+  const orders = as(staff.orders);
 
   beforeAll(async () => {
     const moduleFixture = await Test.createTestingModule({ imports: [AppModule] }).compile();
@@ -41,6 +42,7 @@ describe('Admin API (e2e)', () => {
     for (const [jar, email] of [
       [staff.owner, 'owner@plantify.test'],
       [staff.catalog, 'catalog@plantify.test'],
+      [staff.orders, 'orders@plantify.test'],
     ] as const) {
       jar.absorb(await http().post('/api/auth/sign-in/email').send({ email, password: DEMO_STAFF_PASSWORD }).expect(200));
     }
@@ -108,18 +110,19 @@ describe('Admin API (e2e)', () => {
   // ------------------------------------------------------------------------------------------------
 
   describe('role matrix', () => {
-    const endpoints: { path: string; catalogManager: number; owner: number }[] = [
-      { path: '/api/admin/products', catalogManager: 200, owner: 200 },
-      { path: '/api/admin/categories', catalogManager: 200, owner: 200 },
-      { path: '/api/admin/inventory', catalogManager: 200, owner: 200 },
-      { path: '/api/admin/orders', catalogManager: 200, owner: 200 },
-      { path: '/api/admin/customers', catalogManager: 403, owner: 200 },
+    const endpoints: { path: string; catalogManager: number; orderManager: number; owner: number }[] = [
+      { path: '/api/admin/products', catalogManager: 200, orderManager: 403, owner: 200 },
+      { path: '/api/admin/categories', catalogManager: 200, orderManager: 403, owner: 200 },
+      { path: '/api/admin/inventory', catalogManager: 200, orderManager: 403, owner: 200 },
+      { path: '/api/admin/orders', catalogManager: 403, orderManager: 200, owner: 200 },
+      { path: '/api/admin/customers', catalogManager: 403, orderManager: 200, owner: 200 },
     ];
 
-    it.each(endpoints)('GET $path: anonymous 401, customer 403, catalog $catalogManager, owner $owner', async (e) => {
+    it.each(endpoints)('GET $path: anonymous 401, customer 403, catalog $catalogManager, orders $orderManager, owner $owner', async (e) => {
       await http().get(e.path).expect(401);
       await as(staff.customer).get(e.path).expect(403);
       await catalog.get(e.path).expect(e.catalogManager);
+      await orders.get(e.path).expect(e.orderManager);
       await owner.get(e.path).expect(e.owner);
     });
 
@@ -132,8 +135,10 @@ describe('Admin API (e2e)', () => {
       await c.post('/api/admin/inventory/x/adjust').send({ delta: 1, reason: 'restock' }).expect(403);
     });
 
-    it('refunds and customer data are owner-only', async () => {
+    it('refunds are owner-only and customer data is hidden from the catalog manager', async () => {
       await catalog.post('/api/admin/orders/x/refund').send({}).expect(403);
+      await orders.post('/api/admin/orders/x/refund').send({}).expect(403);
+      await catalog.post('/api/admin/orders/x/status').send({ status: 'processing' }).expect(403);
       await catalog.get('/api/admin/customers/x').expect(403);
     });
   });
@@ -322,17 +327,17 @@ describe('Admin API (e2e)', () => {
   describe('orders', () => {
     it('walks an order through fulfilment and rejects invalid moves', async () => {
       const { orderId } = await paidOrder();
-      const processing = await catalog.post(`/api/admin/orders/${orderId}/status`).send({ status: 'processing' }).expect(200);
+      const processing = await orders.post(`/api/admin/orders/${orderId}/status`).send({ status: 'processing' }).expect(200);
       expect(processing.body.status).toBe('processing');
 
-      await catalog.post(`/api/admin/orders/${orderId}/status`).send({ status: 'delivered' }).expect(409); // cannot skip shipped
-      await catalog.post(`/api/admin/orders/${orderId}/status`).send({ status: 'cancelled' }).expect(409); // paid orders are refunded
-      await catalog.post(`/api/admin/orders/${orderId}/status`).send({ status: 'paid' }).expect(400);
+      await orders.post(`/api/admin/orders/${orderId}/status`).send({ status: 'delivered' }).expect(409); // cannot skip shipped
+      await orders.post(`/api/admin/orders/${orderId}/status`).send({ status: 'cancelled' }).expect(409); // paid orders are refunded
+      await orders.post(`/api/admin/orders/${orderId}/status`).send({ status: 'paid' }).expect(400);
 
-      await catalog.post(`/api/admin/orders/${orderId}/status`).send({ status: 'shipped' }).expect(200);
-      const delivered = await catalog.post(`/api/admin/orders/${orderId}/status`).send({ status: 'delivered' }).expect(200);
+      await orders.post(`/api/admin/orders/${orderId}/status`).send({ status: 'shipped' }).expect(200);
+      const delivered = await orders.post(`/api/admin/orders/${orderId}/status`).send({ status: 'delivered' }).expect(200);
       expect(delivered.body.status).toBe('delivered');
-      await catalog.post(`/api/admin/orders/${orderId}/status`).send({ status: 'processing' }).expect(409);
+      await orders.post(`/api/admin/orders/${orderId}/status`).send({ status: 'processing' }).expect(409);
 
       // The customer sees the new status too.
       const detail = await owner.get(`/api/admin/orders/${orderId}`).expect(200);
@@ -345,9 +350,9 @@ describe('Admin API (e2e)', () => {
       const jar = await customerJar();
       jar.absorb(await http().post('/api/cart/items').set('Cookie', jar.header()).send({ variantId: product.variants[0]!.id, quantity: 1 }));
       const { body } = await http().post('/api/checkout/orders').set('Cookie', jar.header()).send({ shippingAddress: ADDRESS }).expect(201);
-      const cancelled = await catalog.post(`/api/admin/orders/${body.orderId}/status`).send({ status: 'cancelled' }).expect(200);
+      const cancelled = await orders.post(`/api/admin/orders/${body.orderId}/status`).send({ status: 'cancelled' }).expect(200);
       expect(cancelled.body.status).toBe('cancelled');
-      await catalog.post(`/api/admin/orders/${body.orderId}/status`).send({ status: 'processing' }).expect(409);
+      await orders.post(`/api/admin/orders/${body.orderId}/status`).send({ status: 'processing' }).expect(409);
     });
 
     it('owner refunds an order and restocks; a second refund is refused', async () => {
@@ -378,15 +383,15 @@ describe('Admin API (e2e)', () => {
 
     it('lists and filters orders; unknown orders 404', async () => {
       const { orderId } = await paidOrder();
-      const all = await catalog.get('/api/admin/orders?pageSize=5').expect(200);
+      const all = await orders.get('/api/admin/orders?pageSize=5').expect(200);
       expect(all.body.items).toHaveLength(5);
-      const byStatus = await catalog.get('/api/admin/orders?status=refunded&pageSize=100').expect(200);
+      const byStatus = await orders.get('/api/admin/orders?status=refunded&pageSize=100').expect(200);
       expect(byStatus.body.items.every((o: { status: string }) => o.status === 'refunded')).toBe(true);
-      const detail = await catalog.get(`/api/admin/orders/${orderId}`).expect(200);
-      const byNumber = await catalog.get(`/api/admin/orders?q=${detail.body.number}`).expect(200);
+      const detail = await orders.get(`/api/admin/orders/${orderId}`).expect(200);
+      const byNumber = await orders.get(`/api/admin/orders?q=${detail.body.number}`).expect(200);
       expect(byNumber.body.items.map((o: { id: string }) => o.id)).toContain(orderId);
-      await catalog.get('/api/admin/orders/nope').expect(404);
-      await catalog.get('/api/admin/orders?status=bogus').expect(400);
+      await orders.get('/api/admin/orders/nope').expect(404);
+      await orders.get('/api/admin/orders?status=bogus').expect(400);
     });
   });
 

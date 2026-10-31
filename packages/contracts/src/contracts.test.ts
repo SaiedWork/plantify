@@ -61,7 +61,13 @@ describe('permissions', () => {
     expect(can('owner', 'billing:manage')).toBe(true);
     expect(can('catalog_manager', 'billing:manage')).toBe(false);
     expect(can('catalog_manager', 'orders:refund')).toBe(false);
+    expect(can('catalog_manager', 'orders:view')).toBe(false);
+    expect(can('catalog_manager', 'orders:fulfil')).toBe(false);
     expect(can('catalog_manager', 'inventory:manage')).toBe(true);
+    expect(can('order_manager', 'orders:fulfil')).toBe(true);
+    expect(can('order_manager', 'customers:view')).toBe(true);
+    expect(can('order_manager', 'orders:refund')).toBe(false);
+    expect(can('order_manager', 'catalog:manage')).toBe(false);
     expect(can('customer', 'orders:view')).toBe(false);
   });
 });

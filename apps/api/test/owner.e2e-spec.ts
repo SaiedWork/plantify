@@ -16,7 +16,7 @@ describe('Dashboard, staff and audit (e2e)', () => {
   let app: NestExpressApplication;
   let db: Db;
   const http = () => request(app.getHttpServer());
-  const jars = { owner: new Jar(), catalog: new Jar() };
+  const jars = { owner: new Jar(), catalog: new Jar(), orders: new Jar() };
   const as = (jar: Jar) => ({
     get: (url: string) => http().get(url).set('Cookie', jar.header()),
     post: (url: string) => http().post(url).set('Cookie', jar.header()),
@@ -25,6 +25,7 @@ describe('Dashboard, staff and audit (e2e)', () => {
   });
   const owner = as(jars.owner);
   const catalog = as(jars.catalog);
+  const orders = as(jars.orders);
   const createdProducts: string[] = [];
 
   beforeAll(async () => {
@@ -37,12 +38,16 @@ describe('Dashboard, staff and audit (e2e)', () => {
     for (const [jar, email] of [
       [jars.owner, 'owner@plantify.test'],
       [jars.catalog, 'catalog@plantify.test'],
+      [jars.orders, 'orders@plantify.test'],
     ] as const) {
       jar.absorb(await http().post('/api/auth/sign-in/email').send({ email, password: DEMO_STAFF_PASSWORD }).expect(200));
     }
   });
 
   afterAll(async () => {
+    // Role swaps are shared state: always leave the seeded staff with their original roles, even after a failure.
+    await db.execute(sql`update "user" set role = 'catalog_manager' where email = 'catalog@plantify.test'`);
+    await db.execute(sql`update "user" set role = 'order_manager' where email = 'orders@plantify.test'`);
     if (createdProducts.length > 0) {
       const ids = sql.join(createdProducts.map((id) => sql`${id}`), sql`, `);
       await db.execute(sql`
@@ -62,6 +67,11 @@ describe('Dashboard, staff and audit (e2e)', () => {
     jar.absorb(await http().post('/api/auth/email-otp/verify-email').send({ email, otp }));
     const me = await http().get('/api/me').set('Cookie', jar.header()).expect(200);
     return { jar, email, id: me.body.id as string };
+  }
+
+  async function staffId(email: string) {
+    const list = await owner.get('/api/admin/staff').expect(200);
+    return list.body.find((m: { email: string }) => m.email === email).id as string;
   }
 
   async function paidOrder() {
@@ -151,59 +161,112 @@ describe('Dashboard, staff and audit (e2e)', () => {
     });
   });
 
+  describe('overview', () => {
+    it('needs a staff session', async () => {
+      await http().get('/api/admin/overview').expect(401);
+      const customer = await verifiedCustomer();
+      await as(customer.jar).get('/api/admin/overview').expect(403);
+    });
+
+    it('gives each role only its own counts and never money', async () => {
+      const cat = (await catalog.get('/api/admin/overview').expect(200)).body;
+      expect(Object.keys(cat).sort()).toEqual(['catalog', 'days']);
+      expect(cat.catalog.products).toBeGreaterThan(0);
+      expect(cat.catalog.products).toBe(cat.catalog.active + cat.catalog.draft + cat.catalog.archived);
+      expect(cat.catalog.categories).toBeGreaterThan(0);
+      expect(cat.catalog.outOfStock).toBeGreaterThanOrEqual(0);
+
+      const ord = (await orders.get('/api/admin/overview').expect(200)).body;
+      expect(Object.keys(ord).sort()).toEqual(['customers', 'days', 'orders']);
+      expect(ord.orders.toProcess).toBeGreaterThanOrEqual(0);
+      expect(ord.customers).toBeGreaterThan(0);
+
+      const own = (await owner.get('/api/admin/overview').expect(200)).body;
+      expect(Object.keys(own).sort()).toEqual(['catalog', 'customers', 'days', 'orders']);
+      expect(JSON.stringify([cat, ord, own])).not.toMatch(/revenue|cents|total/i);
+    });
+
+    it('returns zero-filled daily series and chart breakdowns for the requested range', async () => {
+      const cat = (await catalog.get('/api/admin/overview?days=7').expect(200)).body;
+      expect(cat.days).toBe(7);
+      expect(cat.catalog.series).toHaveLength(7);
+      expect(cat.catalog.series.every((d: { units: number }) => d.units >= 0)).toBe(true);
+      expect(cat.catalog.productsByCategory.reduce((n: number, c: { products: number }) => n + c.products, 0)).toBe(cat.catalog.products);
+      expect(cat.catalog.bestSellers.length).toBeLessThanOrEqual(5);
+
+      const ord = (await orders.get('/api/admin/overview?days=90').expect(200)).body;
+      expect(ord.orders.series).toHaveLength(90);
+      expect(ord.orders.byStatus.reduce((n: number, s: { count: number }) => n + s.count, 0)).toBe(
+        ord.orders.series.reduce((n: number, d: { orders: number }) => n + d.orders, 0),
+      );
+
+      await catalog.get('/api/admin/overview?days=5').expect(400);
+    });
+
+    it('matches the low-stock and out-of-stock counts of the inventory list', async () => {
+      const { body } = await catalog.get('/api/admin/overview').expect(200);
+      const list = await catalog.get('/api/admin/inventory?lowStock=true&pageSize=100').expect(200);
+      expect(list.body.total).toBe(body.catalog.lowStock + body.catalog.outOfStock);
+    });
+  });
+
   describe('staff & roles', () => {
-    it('is owner-only', async () => {
+    it('is owner-only and lists the three seeded staff with the owner first', async () => {
       await http().get('/api/admin/staff').expect(401);
       await catalog.get('/api/admin/staff').expect(403);
-      await catalog.post('/api/admin/staff').send({ email: 'x@example.com', role: 'owner' }).expect(403);
+      await orders.get('/api/admin/staff').expect(403);
       const list = await owner.get('/api/admin/staff').expect(200);
-      expect(list.body.map((s: { email: string }) => s.email)).toEqual(expect.arrayContaining(['owner@plantify.test', 'catalog@plantify.test']));
+      expect(list.body.map((s: { email: string }) => s.email)).toEqual(
+        expect.arrayContaining(['owner@plantify.test', 'catalog@plantify.test', 'orders@plantify.test']),
+      );
       expect(list.body[0].role).toBe('owner');
     });
 
-    it('promotes a verified customer, takes effect immediately, then revokes access and ends their sessions', async () => {
-      const person = await verifiedCustomer();
-      const asPerson = as(person.jar);
-      await asPerson.get('/api/admin/products').expect(403);
-
-      const granted = await owner.post('/api/admin/staff').send({ email: person.email, role: 'catalog_manager' }).expect(201);
-      expect(granted.body).toMatchObject({ email: person.email, role: 'catalog_manager' });
-
-      // same session, no re-login needed
-      const me = await asPerson.get('/api/me').expect(200);
-      expect(me.body).toMatchObject({ role: 'catalog_manager' });
-      await asPerson.get('/api/admin/products').expect(200);
-      await asPerson.get('/api/admin/customers').expect(403);
-
-      const promoted = await owner.patch(`/api/admin/staff/${person.id}`).send({ role: 'owner' }).expect(200);
-      expect(promoted.body.role).toBe('owner');
-      await asPerson.get('/api/admin/customers').expect(200);
-
-      await owner.delete(`/api/admin/staff/${person.id}`).expect(204);
-      await asPerson.get('/api/admin/products').expect(401); // sessions were dropped
-      const list = await owner.get('/api/admin/staff').expect(200);
-      expect(list.body.some((s: { id: string }) => s.id === person.id)).toBe(false);
+    it('gives the order manager orders and customers but not catalog, billing or staff', async () => {
+      await orders.get('/api/admin/orders').expect(200);
+      await orders.get('/api/admin/customers').expect(200);
+      await orders.get('/api/admin/products').expect(403);
+      await orders.get('/api/admin/inventory').expect(403);
+      await orders.get('/api/admin/dashboard').expect(403);
+      await orders.get('/api/admin/audit').expect(403);
     });
 
-    it('refuses invalid grants', async () => {
-      await owner.post('/api/admin/staff').send({ email: 'nobody-here@example.com', role: 'owner' }).expect(404);
-      await owner.post('/api/admin/staff').send({ email: 'catalog@plantify.test', role: 'owner' }).expect(409); // already staff
-      await owner.post('/api/admin/staff').send({ email: 'someone@example.com', role: 'customer' }).expect(400);
-      await owner.post('/api/admin/staff').send({ email: 'not-an-email', role: 'owner' }).expect(400);
-
-      // unverified accounts cannot be promoted
-      const email = `unverified-${crypto.randomUUID().slice(0, 8)}@example.com`;
-      await http().post('/api/auth/sign-up/email').send({ name: 'No Verify', email, password: 'correct-horse-9' });
-      await owner.post('/api/admin/staff').send({ email, role: 'catalog_manager' }).expect(409);
+    it('swaps roles so each is always held by one person, and the same sessions pick it up', async () => {
+      const olga = await staffId('orders@plantify.test');
+      const carlos = await staffId('catalog@plantify.test');
+      const roleOf = async (email: string) => (await owner.get('/api/admin/staff').expect(200)).body.find((m: { email: string }) => m.email === email).role;
+      try {
+        await orders.get('/api/admin/products').expect(403);
+        const res = await owner.patch(`/api/admin/staff/${olga}`).send({ role: 'catalog_manager' }).expect(200);
+        expect(res.body).toMatchObject({ email: 'orders@plantify.test', role: 'catalog_manager' });
+        expect(await roleOf('catalog@plantify.test')).toBe('order_manager'); // Carlos took Olga's old role
+        await orders.get('/api/admin/products').expect(200);
+        await orders.get('/api/admin/customers').expect(403);
+        await catalog.get('/api/admin/products').expect(403);
+        await catalog.get('/api/admin/customers').expect(200);
+      } finally {
+        await owner.patch(`/api/admin/staff/${carlos}`).send({ role: 'catalog_manager' }).expect(200);
+      }
+      expect(await roleOf('orders@plantify.test')).toBe('order_manager');
+      expect(await roleOf('catalog@plantify.test')).toBe('catalog_manager');
+      await orders.get('/api/admin/customers').expect(200);
+      await catalog.get('/api/admin/products').expect(200);
     });
 
-    it('stops owners locking themselves out', async () => {
-      const list = await owner.get('/api/admin/staff').expect(200);
-      const self = list.body.find((s: { email: string }) => s.email === 'owner@plantify.test');
-      await owner.patch(`/api/admin/staff/${self.id}`).send({ role: 'catalog_manager' }).expect(409);
-      await owner.delete(`/api/admin/staff/${self.id}`).expect(409);
-      await owner.patch('/api/admin/staff/nope').send({ role: 'owner' }).expect(404);
-      await owner.delete('/api/admin/staff/nope').expect(404);
+    it('never lets the owner role change, and rejects other roles and unknown people', async () => {
+      const ownerId = await staffId('owner@plantify.test');
+      await owner.patch(`/api/admin/staff/${ownerId}`).send({ role: 'catalog_manager' }).expect(409);
+      const catalogId = await staffId('catalog@plantify.test');
+      await owner.patch(`/api/admin/staff/${catalogId}`).send({ role: 'owner' }).expect(400);
+      await owner.patch(`/api/admin/staff/${catalogId}`).send({ role: 'customer' }).expect(400);
+      await owner.patch('/api/admin/staff/nope').send({ role: 'catalog_manager' }).expect(404);
+      const customer = await verifiedCustomer();
+      await owner.patch(`/api/admin/staff/${customer.id}`).send({ role: 'catalog_manager' }).expect(404); // not staff
+    });
+
+    it('no longer has grant or revoke endpoints', async () => {
+      await owner.post('/api/admin/staff').send({ email: 'x@example.com', role: 'catalog_manager' }).expect(404);
+      await owner.delete('/api/admin/staff/anything').expect(404);
     });
   });
 
@@ -213,16 +276,22 @@ describe('Dashboard, staff and audit (e2e)', () => {
       await catalog.get('/api/admin/audit').expect(403);
     });
 
-    it('records staff changes with who did them, newest first, and can filter by action prefix', async () => {
-      const person = await verifiedCustomer();
-      await owner.post('/api/admin/staff').send({ email: person.email, role: 'catalog_manager' }).expect(201);
-      await owner.delete(`/api/admin/staff/${person.id}`).expect(204);
+    it('records staff role changes with who did them, newest first, and can filter by action prefix', async () => {
+      const id = await staffId('orders@plantify.test');
+      await owner.patch(`/api/admin/staff/${id}`).send({ role: 'catalog_manager' }).expect(200);
+      await owner.patch(`/api/admin/staff/${id}`).send({ role: 'order_manager' }).expect(200);
 
-      const res = await owner.get('/api/admin/audit?action=staff.&pageSize=5').expect(200);
-      expect(res.body.items.map((e: { action: string }) => e.action).slice(0, 2)).toEqual(['staff.revoke', 'staff.grant']);
-      expect(res.body.items[0]).toMatchObject({ actor: { email: 'owner@plantify.test' }, target: person.id });
-      expect(res.body.items[1].detail).toMatchObject({ email: person.email, role: 'catalog_manager' });
-      expect(res.body.items.every((e: { action: string }) => e.action.startsWith('staff.'))).toBe(true);
+      // Each swap logs both people (same transaction), so two swaps leave four entries.
+      const res = await owner.get('/api/admin/audit?action=staff.&pageSize=4').expect(200);
+      expect(res.body.items).toHaveLength(4);
+      expect(res.body.items.every((e: { action: string }) => e.action === 'staff.role')).toBe(true);
+      expect(res.body.items.every((e: { actor: { email: string } }) => e.actor.email === 'owner@plantify.test')).toBe(true);
+      expect(res.body.items.map((e: { detail: unknown }) => e.detail)).toEqual(
+        expect.arrayContaining([
+          expect.objectContaining({ email: 'orders@plantify.test', from: 'catalog_manager', to: 'order_manager' }),
+          expect.objectContaining({ email: 'catalog@plantify.test', from: 'order_manager', to: 'catalog_manager' }),
+        ]),
+      );
 
       const times = res.body.items.map((e: { createdAt: string }) => Date.parse(e.createdAt));
       expect(times).toEqual([...times].sort((a: number, b: number) => b - a));

@@ -1,15 +1,16 @@
-import { Body, Controller, Delete, Get, HttpCode, Param, Patch, Post, Query, Req } from '@nestjs/common';
+import { Body, Controller, Get, Param, Patch, Query, Req } from '@nestjs/common';
 import {
   auditQuerySchema,
   dashboardQuerySchema,
-  grantStaffSchema,
+  STAFF_ROLES,
   staffRolePatchSchema,
   type AuditQuery,
   type StaffMember,
 } from '@plantify/contracts';
-import { RequirePermission, type AuthedRequest } from '../auth/access.js';
+import { RequirePermission, Roles, type AuthedRequest } from '../auth/access.js';
 import { ZodPipe } from '../common/zod-pipe.js';
 import { AdminDashboardService } from './admin-dashboard.service.js';
+import { AdminOverviewService } from './admin-overview.service.js';
 import { AdminStaffService } from './admin-staff.service.js';
 
 /** Owner-only areas: sales statistics, staff management and the audit trail. */
@@ -17,8 +18,15 @@ import { AdminStaffService } from './admin-staff.service.js';
 export class AdminOwnerController {
   constructor(
     private readonly dashboard: AdminDashboardService,
+    private readonly overviewStats: AdminOverviewService,
     private readonly staff: AdminStaffService,
   ) {}
+
+  @Roles(...STAFF_ROLES)
+  @Get('overview')
+  overview(@Req() req: AuthedRequest, @Query(new ZodPipe(dashboardQuerySchema)) query: { days: number }) {
+    return this.overviewStats.overview(req.user!.role, query.days);
+  }
 
   @RequirePermission('dashboard:revenue')
   @Get('dashboard')
@@ -33,22 +41,9 @@ export class AdminOwnerController {
   }
 
   @RequirePermission('staff:manage')
-  @Post('staff')
-  grant(@Req() req: AuthedRequest, @Body(new ZodPipe(grantStaffSchema)) body: { email: string; role: StaffMember['role'] }) {
-    return this.staff.grant(req.user!.id, body.email, body.role);
-  }
-
-  @RequirePermission('staff:manage')
   @Patch('staff/:id')
   changeRole(@Req() req: AuthedRequest, @Param('id') id: string, @Body(new ZodPipe(staffRolePatchSchema)) body: { role: StaffMember['role'] }) {
     return this.staff.changeRole(req.user!.id, id, body.role);
-  }
-
-  @RequirePermission('staff:manage')
-  @Delete('staff/:id')
-  @HttpCode(204)
-  async revoke(@Req() req: AuthedRequest, @Param('id') id: string) {
-    await this.staff.revoke(req.user!.id, id);
   }
 
   @RequirePermission('staff:manage')

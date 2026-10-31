@@ -4,7 +4,7 @@ import { Button } from '@/components/ui/button';
 import { authClient } from '@/lib/auth-client';
 import { useApi } from '@/lib/use-api';
 import { cn } from '@/lib/utils';
-import type { Permission, Role } from '@plantify/contracts';
+import { ROLE_LABELS, type Permission, type Role } from '@plantify/contracts';
 import {
 	Boxes,
 	History,
@@ -49,12 +49,6 @@ const NAV: {
 	{ href: '/staff', label: 'Staff & roles', icon: ShieldCheck, permission: 'staff:manage' },
 	{ href: '/audit', label: 'Audit log', icon: History, permission: 'staff:manage' },
 ];
-
-const ROLE_LABEL: Record<Role, string> = {
-	owner: 'Owner',
-	catalog_manager: 'Catalog manager',
-	customer: 'Customer',
-};
 
 export function AdminShell({ children }: { children: ReactNode }) {
 	const router = useRouter();
@@ -120,7 +114,7 @@ export function AdminShell({ children }: { children: ReactNode }) {
 					<div className="mt-auto hidden space-y-2 border-t p-3 text-sm md:block">
 						<div>
 							<p className="font-medium">{me.name}</p>
-							<p className="text-xs text-muted-foreground">{ROLE_LABEL[me.role]}</p>
+							<p className="text-xs text-muted-foreground">{ROLE_LABELS[me.role]}</p>
 						</div>
 						<Button
 							variant="outline"

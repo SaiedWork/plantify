@@ -1,6 +1,6 @@
 "use client";
 
-import { useSearchParams } from "next/navigation";
+import { useRouter, useSearchParams } from "next/navigation";
 import { Fragment, Suspense, useState, type FormEvent } from "react";
 import type { InventoryRow, Page, StockMovement } from "@plantify/contracts";
 import { toast } from "sonner";
@@ -91,7 +91,10 @@ function AdjustPanel({ row, onDone }: { row: InventoryRow; onDone: () => void })
 function InventoryTable() {
   const params = useSearchParams();
   const [q, setQ] = useState(params.get("q") ?? "");
-  const [lowOnly, setLowOnly] = useState(params.get("lowStock") === "true");
+  // The URL is the source of truth, so links such as "Open inventory" on the dashboard always apply the filter,
+  // even when this page was already mounted with it unchecked.
+  const router = useRouter();
+  const lowOnly = params.get("lowStock") === "true";
   const [page, setPage] = useState(1);
   const [open, setOpen] = useState<string | null>(null);
   const search = useDebounced(q);
@@ -115,7 +118,7 @@ function InventoryTable() {
             type="checkbox"
             checked={lowOnly}
             onChange={(e) => {
-              setLowOnly(e.target.checked);
+              router.replace(e.target.checked ? "/inventory?lowStock=true" : "/inventory");
               setPage(1);
             }}
           />

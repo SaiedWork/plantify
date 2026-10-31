@@ -52,7 +52,7 @@ describe('Outbound webhooks (e2e)', () => {
   let db: Db;
   let receiver: Awaited<ReturnType<typeof startReceiver>>;
   const http = () => request(app.getHttpServer());
-  const jars = { owner: new Jar(), catalog: new Jar() };
+  const jars = { owner: new Jar(), catalog: new Jar(), orders: new Jar() };
   const as = (jar: Jar) => ({
     get: (url: string) => http().get(url).set('Cookie', jar.header()),
     post: (url: string) => http().post(url).set('Cookie', jar.header()),
@@ -61,6 +61,7 @@ describe('Outbound webhooks (e2e)', () => {
   });
   const owner = as(jars.owner);
   const catalog = as(jars.catalog);
+  const orders = as(jars.orders);
   const createdProducts: string[] = [];
 
   beforeAll(async () => {
@@ -75,6 +76,7 @@ describe('Outbound webhooks (e2e)', () => {
     for (const [jar, email] of [
       [jars.owner, 'owner@plantify.test'],
       [jars.catalog, 'catalog@plantify.test'],
+      [jars.orders, 'orders@plantify.test'],
     ] as const) {
       jar.absorb(await http().post('/api/auth/sign-in/email').send({ email, password: DEMO_STAFF_PASSWORD }).expect(200));
     }
@@ -234,9 +236,9 @@ describe('Outbound webhooks (e2e)', () => {
       await register(['order.shipped', 'order.delivered', 'order.refunded']);
       const { variantId } = await newProduct(20);
       const { orderId } = await buy(variantId, 1);
-      await catalog.post(`/api/admin/orders/${orderId}/status`).send({ status: 'processing' }).expect(200);
-      await catalog.post(`/api/admin/orders/${orderId}/status`).send({ status: 'shipped' }).expect(200);
-      await catalog.post(`/api/admin/orders/${orderId}/status`).send({ status: 'delivered' }).expect(200);
+      await orders.post(`/api/admin/orders/${orderId}/status`).send({ status: 'processing' }).expect(200);
+      await orders.post(`/api/admin/orders/${orderId}/status`).send({ status: 'shipped' }).expect(200);
+      await orders.post(`/api/admin/orders/${orderId}/status`).send({ status: 'delivered' }).expect(200);
       await owner.post(`/api/admin/orders/${orderId}/refund`).send({ restock: false }).expect(200);
 
       await waitFor(() => receiver.received.length, (n) => n >= 3);

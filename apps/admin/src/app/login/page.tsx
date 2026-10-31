@@ -2,12 +2,11 @@
 
 import { useRouter } from "next/navigation";
 import { useState } from "react";
+import { STAFF_ROLES } from "@plantify/contracts";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { authClient, DEMO_ACCOUNTS, DEMO_PASSWORD } from "@/lib/auth-client";
-
-const STAFF_ROLES = ["owner", "catalog_manager"];
 
 export default function LoginPage() {
   const router = useRouter();
@@ -24,7 +23,7 @@ export default function LoginPage() {
       // Customers share the same auth backend; keep them out of the back office.
       const me = await fetch("/api/me", { cache: "no-store" });
       const role = me.ok ? ((await me.json()) as { role: string }).role : null;
-      if (!role || !STAFF_ROLES.includes(role)) {
+      if (!role || !(STAFF_ROLES as readonly string[]).includes(role)) {
         await authClient.signOut();
         toast.error("This account does not have admin access.");
         return;

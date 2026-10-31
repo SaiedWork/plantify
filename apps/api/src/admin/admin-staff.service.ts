@@ -26,59 +26,40 @@ export class AdminStaffService {
   async list(): Promise<StaffMember[]> {
     const { rows } = await this.db.execute<UserRow>(sql`
       select id, name, email, role, email_verified, created_at from "user"
-      where role in ('owner', 'catalog_manager') order by (role = 'owner') desc, name`);
+      where role <> 'customer' order by (role = 'owner') desc, name`);
     return rows.map(toMember);
   }
 
-  /** Promotes an existing, verified account. Staff are never created from scratch here. */
-  async grant(actorId: string, email: string, role: StaffRole): Promise<StaffMember> {
-    const { rows } = await this.db.execute<UserRow>(
-      sql`select id, name, email, role, email_verified, created_at from "user" where email = ${email}`,
-    );
-    const user = rows[0];
-    if (!user) throw new NotFoundException('No account uses that email. They need to sign up in the store first.');
-    if (!user.email_verified) throw new ConflictException('That account has not verified its email yet');
-    if (user.role !== 'customer') throw new ConflictException('That person already has staff access');
-
-    await this.db.execute(sql`update "user" set role = ${role}, updated_at = now() where id = ${user.id}`);
-    await this.audit.log(actorId, 'staff.grant', user.id, { email, role });
-    return toMember({ ...user, role });
-  }
-
+  /**
+   * Gives a non-owner staff member the other switchable role. Each role has exactly one holder, so whoever
+   * held the requested role is moved to this person's previous one. The owner is fixed.
+   */
   async changeRole(actorId: string, id: string, role: StaffRole): Promise<StaffMember> {
     const user = await this.staffMember(id);
-    if (user.id === actorId) throw new ConflictException('You cannot change your own role');
+    if (user.role === 'owner') throw new ConflictException('The owner role cannot be changed');
     if (user.role === role) return toMember(user);
-    await this.guardLastOwner(user);
-    await this.db.execute(sql`update "user" set role = ${role}, updated_at = now() where id = ${id}`);
-    await this.audit.log(actorId, 'staff.role', id, { email: user.email, from: user.role, to: role });
-    return toMember({ ...user, role });
-  }
 
-  async revoke(actorId: string, id: string): Promise<void> {
-    const user = await this.staffMember(id);
-    if (user.id === actorId) throw new ConflictException('You cannot remove your own access');
-    await this.guardLastOwner(user);
     await this.db.transaction(async (tx) => {
-      await tx.execute(sql`update "user" set role = 'customer', updated_at = now() where id = ${id}`);
-      // Drop their sessions so the change takes effect immediately.
-      await tx.execute(sql`delete from session where user_id = ${id}`);
-      await this.audit.log(actorId, 'staff.revoke', id, { email: user.email, was: user.role }, tx);
+      const { rows } = await tx.execute<{ id: string; email: string }>(
+        sql`select id, email from "user" where role = ${role} and id <> ${id} for update`,
+      );
+      const other = rows[0];
+      if (other) {
+        await tx.execute(sql`update "user" set role = ${user.role}, updated_at = now() where id = ${other.id}`);
+        await this.audit.log(actorId, 'staff.role', other.id, { email: other.email, from: role, to: user.role }, tx);
+      }
+      await tx.execute(sql`update "user" set role = ${role}, updated_at = now() where id = ${id}`);
+      await this.audit.log(actorId, 'staff.role', id, { email: user.email, from: user.role, to: role }, tx);
     });
+    return toMember({ ...user, role });
   }
 
   private async staffMember(id: string): Promise<UserRow> {
     const { rows } = await this.db.execute<UserRow>(sql`
       select id, name, email, role, email_verified, created_at from "user"
-      where id = ${id} and role in ('owner', 'catalog_manager')`);
+      where id = ${id} and role <> 'customer'`);
     if (!rows[0]) throw new NotFoundException('Staff member not found');
     return rows[0];
-  }
-
-  private async guardLastOwner(user: UserRow) {
-    if (user.role !== 'owner') return;
-    const { rows } = await this.db.execute<{ n: string }>(sql`select count(*) as n from "user" where role = 'owner'`);
-    if (Number(rows[0]!.n) <= 1) throw new ConflictException('There must always be at least one owner');
   }
 
   // ---- audit log -------------------------------------------------------------------------------
