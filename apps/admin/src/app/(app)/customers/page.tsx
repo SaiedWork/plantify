@@ -56,7 +56,7 @@ export default function CustomersPage() {
                     </Link>
                     <span className="block text-xs text-muted-foreground">{c.email}</span>
                   </Td>
-                  <Td>{formatDate(c.createdAt)}</Td>
+                  <Td className="whitespace-nowrap">{formatDate(c.createdAt)}</Td>
                   <Td right>{c.orderCount}</Td>
                   <Td right>{formatPrice(c.lifetimeCents)}</Td>
                 </tr>

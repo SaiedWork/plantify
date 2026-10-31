@@ -2,15 +2,20 @@
 
 import Link from "next/link";
 import { useParams } from "next/navigation";
-import { Suspense } from "react";
+import { Suspense, useState } from "react";
 import type { CustomerDetail } from "@plantify/contracts";
-import { EmptyState, OrderBadge, PageHeader, RequirePermission, Skeleton, TableShell, Td, Th } from "@/components/page-bits";
+import { useBreadcrumbLabel } from "@/components/app-header";
+import { EmptyState, OrderBadge, PageHeader, Pager, RequirePermission, Skeleton, TableShell, TableToolbar, Td, Th } from "@/components/page-bits";
 import { formatDate, formatDateTime, formatPrice } from "@/lib/format";
 import { useApi } from "@/lib/use-api";
+
+const PAGE_SIZE = 15;
 
 function CustomerView() {
   const { id } = useParams<{ id: string }>();
   const { data: c, loading, error } = useApi<CustomerDetail>(`/admin/customers/${id}`);
+  const [page, setPage] = useState(1);
+  useBreadcrumbLabel(c?.name);
 
   if (loading) return <Skeleton className="h-64" />;
   if (error || !c) {
@@ -24,17 +29,11 @@ function CustomerView() {
     );
   }
 
+  const current = Math.min(page, Math.max(1, Math.ceil(c.orders.length / PAGE_SIZE)));
+
   return (
-    <div className="max-w-3xl space-y-6">
-      <PageHeader
-        title={c.name}
-        description={c.email}
-        actions={
-          <Link href="/customers" className="inline-flex h-8 items-center px-3 text-sm underline">
-            All customers
-          </Link>
-        }
-      />
+    <div className="space-y-6">
+      <PageHeader title={c.name} description={c.email} />
       <dl className="grid gap-4 sm:grid-cols-3">
         {[
           ["Joined", formatDate(c.createdAt)],
@@ -47,8 +46,11 @@ function CustomerView() {
           </div>
         ))}
       </dl>
-      <section className="space-y-2">
-        <h2 className="font-semibold">Orders</h2>
+      <p className="-mt-3 text-xs text-muted-foreground">Orders and lifetime spend leave out cancelled and refunded orders.</p>
+      <section>
+        <TableToolbar total={c.orders.length}>
+          <h2 className="font-semibold">Orders</h2>
+        </TableToolbar>
         {c.orders.length === 0 ? (
           <EmptyState>No orders yet.</EmptyState>
         ) : (
@@ -62,14 +64,14 @@ function CustomerView() {
               </tr>
             </thead>
             <tbody className="divide-y">
-              {c.orders.map((o) => (
+              {c.orders.slice((current - 1) * PAGE_SIZE, current * PAGE_SIZE).map((o) => (
                 <tr key={o.id}>
                   <Td>
                     <Link href={`/orders/${o.id}`} className="font-medium underline">
                       {o.number}
                     </Link>
                   </Td>
-                  <Td>{formatDateTime(o.placedAt)}</Td>
+                  <Td className="whitespace-nowrap">{formatDateTime(o.placedAt)}</Td>
                   <Td>
                     <OrderBadge status={o.status} />
                   </Td>
@@ -79,6 +81,7 @@ function CustomerView() {
             </tbody>
           </TableShell>
         )}
+        <Pager page={current} pageSize={PAGE_SIZE} total={c.orders.length} onPage={setPage} />
       </section>
     </div>
   );
