@@ -7,7 +7,8 @@ import type { AdminProductListItem, Page, ProductStatus } from "@plantify/contra
 import { PRODUCT_STATUSES } from "@plantify/contracts";
 import { buttonVariants } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { EmptyState, PageHeader, Pager, ProductBadge, RequirePermission, selectClass, Skeleton, TableShell, Td, Th } from "@/components/page-bits";
+import { Select } from "@/components/ui/select";
+import { EmptyState, PageHeader, Pager, ProductBadge, RequirePermission, Skeleton, TableShell, Td, Th } from "@/components/page-bits";
 import { qs } from "@/lib/api-client";
 import { formatPrice } from "@/lib/format";
 import { imageSrc } from "@/lib/images";
@@ -43,22 +44,15 @@ export default function ProductsPage() {
           className="max-w-xs"
           aria-label="Search products"
         />
-        <select
+        <Select
           value={status}
-          onChange={(e) => {
-            setStatus(e.target.value as ProductStatus | "");
+          onValueChange={(v) => {
+            setStatus(v as ProductStatus | "");
             setPage(1);
           }}
-          className={selectClass}
+          options={[{ value: "", label: "All statuses" }, ...PRODUCT_STATUSES.map((s) => ({ value: s, label: s }))]}
           aria-label="Filter by status"
-        >
-          <option value="">All statuses</option>
-          {PRODUCT_STATUSES.map((s) => (
-            <option key={s} value={s}>
-              {s}
-            </option>
-          ))}
-        </select>
+        />
       </div>
 
       {loading && !data ? (

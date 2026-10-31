@@ -7,9 +7,10 @@ import type { AdminCategory, AdminProductDetail, ProductStatus } from "@plantify
 import { PRODUCT_STATUSES } from "@plantify/contracts";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
+import { Select } from "@/components/ui/select";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { PageHeader, RequirePermission, selectClass } from "@/components/page-bits";
+import { PageHeader, RequirePermission } from "@/components/page-bits";
 import { api, errorMessage } from "@/lib/api-client";
 import { dollarsToCents } from "@/lib/format";
 import { useApi } from "@/lib/use-api";
@@ -72,23 +73,11 @@ export default function NewProductPage() {
         <div className="grid gap-4 sm:grid-cols-3">
           <div className="space-y-2">
             <Label htmlFor="category">Category</Label>
-            <select id="category" value={categoryId || categories?.[0]?.id || ""} onChange={(e) => setCategoryId(e.target.value)} className={`${selectClass} w-full`} required>
-              {categories?.map((c) => (
-                <option key={c.id} value={c.id}>
-                  {c.name}
-                </option>
-              ))}
-            </select>
+            <Select id="category" value={categoryId || categories?.[0]?.id || ""} onValueChange={setCategoryId} options={(categories ?? []).map((c) => ({ value: c.id, label: c.name }))} className="w-full" />
           </div>
           <div className="space-y-2">
             <Label htmlFor="status">Status</Label>
-            <select id="status" value={status} onChange={(e) => setStatus(e.target.value as ProductStatus)} className={`${selectClass} w-full`}>
-              {PRODUCT_STATUSES.map((s) => (
-                <option key={s} value={s}>
-                  {s}
-                </option>
-              ))}
-            </select>
+            <Select id="status" value={status} onValueChange={(v) => setStatus(v as ProductStatus)} options={PRODUCT_STATUSES.map((s) => ({ value: s, label: s }))} className="w-full" />
           </div>
           <label className="flex items-end gap-2 pb-2 text-sm">
             <input type="checkbox" checked={featured} onChange={(e) => setFeatured(e.target.checked)} /> Featured on the home page

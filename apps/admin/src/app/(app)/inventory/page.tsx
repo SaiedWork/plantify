@@ -5,8 +5,9 @@ import { Fragment, Suspense, useState, type FormEvent } from "react";
 import type { InventoryRow, Page, StockMovement } from "@plantify/contracts";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
+import { Select } from "@/components/ui/select";
 import { Input } from "@/components/ui/input";
-import { Badge, EmptyState, PageHeader, Pager, RequirePermission, selectClass, Skeleton, TableShell, Td, Th } from "@/components/page-bits";
+import { Badge, EmptyState, PageHeader, Pager, RequirePermission, Skeleton, TableShell, Td, Th } from "@/components/page-bits";
 import { api, errorMessage, qs } from "@/lib/api-client";
 import { formatDateTime } from "@/lib/format";
 import { useApi, useDebounced } from "@/lib/use-api";
@@ -64,10 +65,15 @@ function AdjustPanel({ row, onDone }: { row: InventoryRow; onDone: () => void })
         </label>
         <label className="space-y-1 text-xs">
           Reason
-          <select value={reason} onChange={(e) => setReason(e.target.value as "restock" | "adjustment")} className={cn(selectClass, "block h-8")}>
-            <option value="restock">Restock</option>
-            <option value="adjustment">Adjustment / damage</option>
-          </select>
+          <Select
+            value={reason}
+            onValueChange={(v) => setReason(v as "restock" | "adjustment")}
+            options={[
+              { value: "restock", label: "Restock" },
+              { value: "adjustment", label: "Adjustment / damage" },
+            ]}
+            className="flex h-8 w-full"
+          />
         </label>
         <label className="flex-1 space-y-1 text-xs">
           Note (optional)
@@ -89,7 +95,7 @@ function InventoryTable() {
   const [page, setPage] = useState(1);
   const [open, setOpen] = useState<string | null>(null);
   const search = useDebounced(q);
-  const { data, loading, reload } = useApi<Page<InventoryRow>>(`/admin/inventory${qs({ q: search, lowStock: lowOnly ? "true" : "", page, pageSize: 20 })}`);
+  const { data, loading, reload } = useApi<Page<InventoryRow>>(`/admin/inventory${qs({ q: search, lowStock: lowOnly ? "true" : "", page, pageSize: 15 })}`);
 
   return (
     <>

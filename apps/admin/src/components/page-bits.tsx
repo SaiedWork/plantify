@@ -99,4 +99,3 @@ export function EmptyState({ children }: { children: ReactNode }) {
   return <p className="rounded-xl border border-dashed p-10 text-center text-sm text-muted-foreground">{children}</p>;
 }
 
-export const selectClass = "h-9 rounded-lg border bg-background px-2 text-sm";

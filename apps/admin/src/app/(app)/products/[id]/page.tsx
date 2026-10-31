@@ -8,9 +8,10 @@ import type { AdminCategory, AdminProductDetail, AdminVariant, ProductStatus } f
 import { MAX_IMAGES_PER_PRODUCT, PRODUCT_STATUSES } from "@plantify/contracts";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
+import { Select } from "@/components/ui/select";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { PageHeader, RequirePermission, selectClass, Skeleton, TableShell, Td, Th } from "@/components/page-bits";
+import { PageHeader, RequirePermission, Skeleton, TableShell, Td, Th } from "@/components/page-bits";
 import { api, errorMessage } from "@/lib/api-client";
 import { centsToDollars, dollarsToCents } from "@/lib/format";
 import { imageSrc } from "@/lib/images";
@@ -76,23 +77,11 @@ function Details({ product, categories, reload }: { product: AdminProductDetail;
       <div className="grid gap-4 sm:grid-cols-3">
         <div className="space-y-2">
           <Label htmlFor="category">Category</Label>
-          <select id="category" value={categoryId} onChange={(e) => setCategoryId(e.target.value)} className={`${selectClass} w-full`}>
-            {categories.map((c) => (
-              <option key={c.id} value={c.id}>
-                {c.name}
-              </option>
-            ))}
-          </select>
+          <Select id="category" value={categoryId} onValueChange={setCategoryId} options={(categories ?? []).map((c) => ({ value: c.id, label: c.name }))} className="w-full" />
         </div>
         <div className="space-y-2">
           <Label htmlFor="status">Status</Label>
-          <select id="status" value={status} onChange={(e) => setStatus(e.target.value as ProductStatus)} className={`${selectClass} w-full`}>
-            {PRODUCT_STATUSES.map((s) => (
-              <option key={s} value={s}>
-                {s}
-              </option>
-            ))}
-          </select>
+          <Select id="status" value={status} onValueChange={(v) => setStatus(v as ProductStatus)} options={PRODUCT_STATUSES.map((s) => ({ value: s, label: s }))} className="w-full" />
         </div>
         <label className="flex items-end gap-2 pb-2 text-sm">
           <input type="checkbox" checked={featured} onChange={(e) => setFeatured(e.target.checked)} /> Featured
