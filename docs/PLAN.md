@@ -3,6 +3,8 @@
 > This is the plan as approved at the start of the project. The status section below tracks progress and
 > any deliberate differences; the rest of the document is left as originally written.
 
+> Work on this plan follows the loop in [COLLABORATION.md](COLLABORATION.md); it is never skipped.
+
 ## Status
 
 | Milestone | State |
