@@ -450,7 +450,7 @@ function Deliveries({ endpoints, version }: { endpoints: WebhookEndpointView[]; 
 										<Td right className="whitespace-nowrap">
 											<div className="flex items-center justify-end gap-2">
 												<Button
-													variant="ghost"
+													variant="outline"
 													onClick={() => setOpen(open === d.id ? null : d.id)}
 												>
 													{open === d.id ? 'Hide' : 'Details'}

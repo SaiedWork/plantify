@@ -1,10 +1,11 @@
 "use client";
 
+import { RefreshCw } from "lucide-react";
 import { Fragment, useState } from "react";
 import type { AuditEntry, Page } from "@plantify/contracts";
 import { Button } from "@/components/ui/button";
 import { Select } from "@/components/ui/select";
-import { EmptyState, ErrorState, PageHeader, Pager, TableToolbar, RequirePermission, Skeleton, TableShell, Td, Th } from "@/components/page-bits";
+import { Badge, EmptyState, ErrorState, PageHeader, Pager, TableToolbar, RequirePermission, Skeleton, TableShell, Td, Th } from "@/components/page-bits";
 import { qs } from "@/lib/api-client";
 import { formatDateTime } from "@/lib/format";
 import { useApi } from "@/lib/use-api";
@@ -20,6 +21,18 @@ const AREAS = [
   ["webhook.", "Webhooks"],
   ["staff.", "Staff"],
 ] as const;
+
+const AREA_STYLE: Record<string, string> = {
+  product: "bg-blue-100 text-blue-900 dark:bg-blue-500/20 dark:text-blue-300",
+  variant: "bg-blue-100 text-blue-900 dark:bg-blue-500/20 dark:text-blue-300",
+  image: "bg-blue-100 text-blue-900 dark:bg-blue-500/20 dark:text-blue-300",
+  category: "bg-blue-100 text-blue-900 dark:bg-blue-500/20 dark:text-blue-300",
+  inventory: "bg-amber-100 text-amber-900 dark:bg-amber-500/20 dark:text-amber-300",
+  order: "bg-emerald-100 text-emerald-900 dark:bg-emerald-500/20 dark:text-emerald-300",
+  webhook: "bg-indigo-100 text-indigo-900 dark:bg-indigo-500/20 dark:text-indigo-300",
+  staff: "bg-rose-100 text-rose-900 dark:bg-rose-500/20 dark:text-rose-300",
+};
+const areaStyle = (action: string) => AREA_STYLE[action.split(".")[0]!] ?? "bg-muted";
 
 export default function AuditPage() {
   const [action, setAction] = useState("");
@@ -41,7 +54,7 @@ export default function AuditPage() {
           aria-label="Filter by area"
         />
         <Button variant="outline" onClick={reload}>
-          Refresh
+          <RefreshCw /> Refresh
         </Button>
       </TableToolbar>
       {loading && !data ? (
@@ -67,14 +80,14 @@ export default function AuditPage() {
                 <Fragment key={e.id}>
                   <tr className="hover:bg-muted/40">
                     <Td className="whitespace-nowrap">{formatDateTime(e.createdAt)}</Td>
-                    <Td>{e.actor ? e.actor.name : <span className="text-muted-foreground">System</span>}</Td>
-                    <Td>
-                      <code className="text-xs">{e.action}</code>
+                    <Td className="whitespace-nowrap">{e.actor ? e.actor.name : <span className="text-muted-foreground">System</span>}</Td>
+                    <Td className="whitespace-nowrap">
+                      <Badge className={`font-mono normal-case ${areaStyle(e.action)}`}>{e.action}</Badge>
                     </Td>
-                    <Td className="max-w-40 truncate font-mono text-xs text-muted-foreground">{e.target ?? "—"}</Td>
+                    <Td className="min-w-40 max-w-52 font-mono text-xs break-all text-muted-foreground">{e.target ?? "—"}</Td>
                     <Td right>
                       {e.detail !== null && e.detail !== undefined && (
-                        <Button size="sm" variant="ghost" onClick={() => setOpen(open === e.id ? null : e.id)}>
+                        <Button variant="outline" onClick={() => setOpen(open === e.id ? null : e.id)}>
                           {open === e.id ? "Hide" : "Details"}
                         </Button>
                       )}
