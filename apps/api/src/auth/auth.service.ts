@@ -20,7 +20,12 @@ function createAuth(db: Db, mail: MailService) {
     basePath: '/api/auth',
     secret,
     // Browsers talk to us through each Next app's /api rewrite, so these are the Origins we see.
-    trustedOrigins: [process.env.STOREFRONT_URL, process.env.ADMIN_URL].filter((o): o is string => !!o),
+    // In dev, plain localhost also works (the apps run on :3000 and :3001).
+    trustedOrigins: [
+      process.env.STOREFRONT_URL,
+      process.env.ADMIN_URL,
+      ...(process.env.NODE_ENV === 'production' ? [] : ['http://localhost:3000', 'http://localhost:3001']),
+    ].filter((o): o is string => !!o),
     database: drizzleAdapter(db, {
       provider: 'pg',
       schema: { user, session, account, verification, rateLimit },
