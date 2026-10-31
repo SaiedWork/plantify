@@ -32,9 +32,15 @@ export default function RootLayout({ children }: LayoutProps<"/">) {
       <body className="min-h-full flex flex-col">
         <DemoInboxProvider>
           <CartProvider>
+            <a
+              href="#main"
+              className="sr-only focus:not-sr-only focus:fixed focus:left-2 focus:top-2 focus:z-50 focus:rounded-md focus:bg-background focus:px-3 focus:py-2 focus:text-sm focus:shadow"
+            >
+              Skip to content
+            </a>
             <DemoBanner />
             <SiteHeader />
-            <main className="flex-1">{children}</main>
+            <main id="main" tabIndex={-1} className="flex-1 outline-none">{children}</main>
           </CartProvider>
         </DemoInboxProvider>
         <Toaster />

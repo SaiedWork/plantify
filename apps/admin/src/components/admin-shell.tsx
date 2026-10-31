@@ -74,6 +74,12 @@ export function AdminShell({ children }: { children: ReactNode }) {
 	return (
 		<MeContext.Provider value={{ me, can }}>
 			<div className="min-h-screen md:pl-[220px]">
+				<a
+					href="#main"
+					className="sr-only focus:not-sr-only focus:fixed focus:left-2 focus:top-2 focus:z-50 focus:rounded-md focus:bg-background focus:px-3 focus:py-2 focus:text-sm focus:shadow"
+				>
+					Skip to content
+				</a>
 				<aside className="flex min-w-0 flex-col border-b bg-muted/30 md:fixed md:inset-y-0 md:left-0 md:w-[220px] md:overflow-y-auto md:border-b-0 md:border-r">
 					<div className="flex items-center justify-between gap-2 px-4 py-4">
 						<span className="flex items-center gap-2 font-semibold text-green-800 dark:text-green-400">
@@ -130,7 +136,7 @@ export function AdminShell({ children }: { children: ReactNode }) {
 						</Button>
 					</div>
 				</aside>
-				<main className="mx-auto w-full min-w-0 max-w-7xl p-4 md:p-8">{children}</main>
+				<main id="main" tabIndex={-1} className="mx-auto w-full min-w-0 max-w-7xl p-4 outline-none md:p-8">{children}</main>
 			</div>
 		</MeContext.Provider>
 	);

@@ -70,7 +70,7 @@ function SignInForm() {
     <div className="mx-auto flex max-w-md px-4 py-12">
       <Card className="w-full">
         <CardHeader>
-          <CardTitle>Sign in</CardTitle>
+          <CardTitle role="heading" aria-level={1}>Sign in</CardTitle>
           <CardDescription>Use your password, or get a one-time code in the demo inbox.</CardDescription>
         </CardHeader>
         <CardContent className="space-y-4">

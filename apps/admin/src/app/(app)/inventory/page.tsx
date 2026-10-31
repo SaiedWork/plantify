@@ -7,7 +7,7 @@ import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { Select } from "@/components/ui/select";
 import { Input } from "@/components/ui/input";
-import { Badge, EmptyState, PageHeader, Pager, RequirePermission, Skeleton, TableShell, Td, Th } from "@/components/page-bits";
+import { Badge, EmptyState, ErrorState, PageHeader, Pager, RequirePermission, Skeleton, TableShell, Td, Th } from "@/components/page-bits";
 import { api, errorMessage, qs } from "@/lib/api-client";
 import { formatDateTime } from "@/lib/format";
 import { useApi, useDebounced } from "@/lib/use-api";
@@ -95,7 +95,7 @@ function InventoryTable() {
   const [page, setPage] = useState(1);
   const [open, setOpen] = useState<string | null>(null);
   const search = useDebounced(q);
-  const { data, loading, reload } = useApi<Page<InventoryRow>>(`/admin/inventory${qs({ q: search, lowStock: lowOnly ? "true" : "", page, pageSize: 15 })}`);
+  const { data, loading, error, reload } = useApi<Page<InventoryRow>>(`/admin/inventory${qs({ q: search, lowStock: lowOnly ? "true" : "", page, pageSize: 15 })}`);
 
   return (
     <>
@@ -124,6 +124,8 @@ function InventoryTable() {
       </div>
       {loading && !data ? (
         <Skeleton />
+      ) : error ? (
+        <ErrorState onRetry={reload} />
       ) : !data || data.items.length === 0 ? (
         <EmptyState>No variants match.</EmptyState>
       ) : (

@@ -4,7 +4,7 @@ import { Fragment, useState } from "react";
 import type { AuditEntry, Page } from "@plantify/contracts";
 import { Button } from "@/components/ui/button";
 import { Select } from "@/components/ui/select";
-import { EmptyState, PageHeader, Pager, RequirePermission, Skeleton, TableShell, Td, Th } from "@/components/page-bits";
+import { EmptyState, ErrorState, PageHeader, Pager, RequirePermission, Skeleton, TableShell, Td, Th } from "@/components/page-bits";
 import { qs } from "@/lib/api-client";
 import { formatDateTime } from "@/lib/format";
 import { useApi } from "@/lib/use-api";
@@ -25,7 +25,7 @@ export default function AuditPage() {
   const [action, setAction] = useState("");
   const [page, setPage] = useState(1);
   const [open, setOpen] = useState<string | null>(null);
-  const { data, loading, reload } = useApi<Page<AuditEntry>>(`/admin/audit${qs({ action, page, pageSize: 15 })}`);
+  const { data, loading, error, reload } = useApi<Page<AuditEntry>>(`/admin/audit${qs({ action, page, pageSize: 15 })}`);
 
   return (
     <RequirePermission permission="staff:manage">
@@ -46,6 +46,8 @@ export default function AuditPage() {
       </div>
       {loading && !data ? (
         <Skeleton />
+      ) : error ? (
+        <ErrorState onRetry={reload} />
       ) : !data || data.items.length === 0 ? (
         <EmptyState>No activity recorded.</EmptyState>
       ) : (

@@ -41,7 +41,7 @@ function SignUpForm() {
     <div className="mx-auto flex max-w-md px-4 py-12">
       <Card className="w-full">
         <CardHeader>
-          <CardTitle>Create your account</CardTitle>
+          <CardTitle role="heading" aria-level={1}>Create your account</CardTitle>
           <CardDescription>We will send a 6-digit code to verify your email.</CardDescription>
         </CardHeader>
         <CardContent>

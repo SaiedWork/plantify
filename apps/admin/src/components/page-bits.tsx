@@ -99,3 +99,17 @@ export function EmptyState({ children }: { children: ReactNode }) {
   return <p className="rounded-xl border border-dashed p-10 text-center text-sm text-muted-foreground">{children}</p>;
 }
 
+
+/** Shown in place of a list/detail when the request failed, so an outage is not mistaken for "no results". */
+export function ErrorState({ onRetry }: { onRetry?: () => void }) {
+  return (
+    <div role="alert" className="rounded-xl border border-dashed p-10 text-center text-sm">
+      <p className="font-medium">Couldn&apos;t load this data.</p>
+      {onRetry && (
+        <Button variant="outline" size="sm" className="mt-3" onClick={onRetry}>
+          Try again
+        </Button>
+      )}
+    </div>
+  );
+}

@@ -4,7 +4,7 @@ import Link from "next/link";
 import { useState } from "react";
 import type { CustomerListItem, Page } from "@plantify/contracts";
 import { Input } from "@/components/ui/input";
-import { EmptyState, PageHeader, Pager, RequirePermission, Skeleton, TableShell, Td, Th } from "@/components/page-bits";
+import { EmptyState, ErrorState, PageHeader, Pager, RequirePermission, Skeleton, TableShell, Td, Th } from "@/components/page-bits";
 import { qs } from "@/lib/api-client";
 import { formatDate, formatPrice } from "@/lib/format";
 import { useApi, useDebounced } from "@/lib/use-api";
@@ -13,7 +13,7 @@ export default function CustomersPage() {
   const [q, setQ] = useState("");
   const [page, setPage] = useState(1);
   const search = useDebounced(q);
-  const { data, loading } = useApi<Page<CustomerListItem>>(`/admin/customers${qs({ q: search, page, pageSize: 15 })}`);
+  const { data, loading, error, reload } = useApi<Page<CustomerListItem>>(`/admin/customers${qs({ q: search, page, pageSize: 15 })}`);
 
   return (
     <RequirePermission permission="customers:view">
@@ -30,6 +30,8 @@ export default function CustomersPage() {
       />
       {loading && !data ? (
         <Skeleton />
+      ) : error ? (
+        <ErrorState onRetry={reload} />
       ) : !data || data.items.length === 0 ? (
         <EmptyState>No customers match.</EmptyState>
       ) : (
