@@ -15,6 +15,7 @@ export const DEMO_STAFF_PASSWORD = 'plantify-demo';
 export const STAFF = [
   { name: 'Olivia Owner', email: 'owner@plantify.test', role: 'owner' as const },
   { name: 'Carlos Catalog', email: 'catalog@plantify.test', role: 'catalog_manager' as const },
+  { name: 'Olga Orders', email: 'orders@plantify.test', role: 'order_manager' as const },
 ];
 
 type OrderStatus = (typeof s.ORDER_STATUSES)[number];
@@ -308,11 +309,12 @@ export async function seed(db: Db, now = new Date()) {
   // A believable trail of staff activity so the audit log is not empty on a fresh demo.
   const owner = staffRows[0]!;
   const catalogManager = staffRows[1]!;
+  const orderManager = staffRows[2]!;
   const auditRows: (typeof s.auditLog.$inferInsert)[] = [];
   for (const o of planned.filter((p) => p.status === 'shipped' || p.status === 'delivered').slice(-25)) {
     const at = new Date(Math.min(now.getTime(), o.placedAt.getTime() + DAY));
     auditRows.push({
-      actorId: catalogManager.id,
+      actorId: orderManager.id,
       action: 'order.status',
       target: o.id,
       detail: { from: 'processing', to: o.status === 'delivered' ? 'shipped' : o.status },

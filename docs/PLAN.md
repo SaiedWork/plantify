@@ -57,15 +57,15 @@ Real OTP flow, fake mailbox. Better Auth `emailOTP` plugin generates/hashes/expi
 - Staff: seeded only; admin sign-in is password-based, with "Demo login as Owner / Catalog manager" buttons. Public sign-up disabled on admin; `role` is `input: false` so nobody can self-assign a role.
 
 ### 3. Roles & permissions (3 layers: Nest guard = source of truth, Next middleware redirect, UI hides)
-| Area | customer | catalog_manager | owner |
-|---|---|---|---|
-| Storefront, own account/orders | yes | n/a | n/a |
-| Products, categories, inventory | – | full | full |
-| Orders (view, fulfil/ship) | – | view + fulfil | full (+ cancel/refund) |
-| Customers overview | – | – | view |
-| Sales dashboard (revenue) | – | stock/low-stock widgets only | full |
-| Invoices, payments, billing settings | – | – | full |
-| Webhooks, staff/roles, audit log, reset info | – | – | full |
+| Area | customer | catalog_manager | order_manager | owner |
+|---|---|---|---|---|
+| Storefront, own account/orders | yes | n/a | n/a | n/a |
+| Products, categories, inventory | – | full | – | full |
+| Orders (view, fulfil/ship) | – | – | view + fulfil | full (+ cancel/refund) |
+| Customers overview | – | – | view | view |
+| Sales dashboard (revenue) | – | catalog and stock counts only | order and customer counts only | full |
+| Invoices, payments, billing settings | – | – | – | full |
+| Webhooks, staff/roles, audit log, reset info | – | – | – | full |
 
 Implementation: `@Roles()` / `@RequirePermission('orders:refund')` decorators + `RolesGuard`; permission map in `packages/contracts` shared with the UI.
 

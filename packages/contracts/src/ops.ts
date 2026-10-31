@@ -16,6 +16,36 @@ export const dashboardQuerySchema = z.object({
     .default(30),
 });
 
+/** Counts only, no money: each section is present only when the caller's role may see it. */
+export type AdminOverview = {
+  days: number;
+  catalog?: {
+    products: number;
+    active: number;
+    draft: number;
+    archived: number;
+    categories: number;
+    variants: number;
+    lowStock: number;
+    outOfStock: number;
+    /** Units sold per day over the range, zero-filled (`date` is YYYY-MM-DD, UTC). */
+    series: { date: string; units: number }[];
+    productsByCategory: { name: string; products: number }[];
+    bestSellers: { name: string; units: number }[];
+  };
+  orders?: {
+    awaitingPayment: number;
+    toProcess: number;
+    processing: number;
+    shipped: number;
+    placedToday: number;
+    /** Orders placed per day over the range, zero-filled. */
+    series: { date: string; orders: number }[];
+    byStatus: { status: OrderStatus; count: number }[];
+  };
+  customers?: number;
+};
+
 export type KpiPair = { current: number; previous: number };
 
 export type DashboardStats = {
@@ -97,18 +127,15 @@ export type WebhookEnvelope<T = unknown> = {
 
 // ---- staff & audit -----------------------------------------------------------------------------
 
-export const STAFF_GRANTABLE_ROLES = ['catalog_manager', 'owner'] as const;
-export const grantStaffSchema = z.object({
-  email: z.string().trim().toLowerCase().email().max(200),
-  role: z.enum(STAFF_GRANTABLE_ROLES),
-});
-export const staffRolePatchSchema = z.object({ role: z.enum(STAFF_GRANTABLE_ROLES) });
+/** The owner is fixed; only these two roles can be switched between. */
+export const STAFF_SWITCHABLE_ROLES = ['catalog_manager', 'order_manager'] as const;
+export const staffRolePatchSchema = z.object({ role: z.enum(STAFF_SWITCHABLE_ROLES) });
 
 export type StaffMember = {
   id: string;
   name: string;
   email: string;
-  role: Extract<Role, 'owner' | 'catalog_manager'>;
+  role: Exclude<Role, 'customer'>;
   createdAt: string;
 };
 

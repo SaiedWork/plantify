@@ -8,6 +8,7 @@ A guided tour of Plantify. Everything is fake: no real payments, no real email, 
 |---|---|
 | Owner login (admin) | `owner@plantify.test` / `plantify-demo` |
 | Catalog manager login (admin) | `catalog@plantify.test` / `plantify-demo` |
+| Order manager login (admin) | `orders@plantify.test` / `plantify-demo` |
 | Card that pays | `1234 5678 9` (or `4242 4242 4242 4242`) |
 | Card that is declined | `0000 0000 0` (or `4000 0000 0000 0002`) |
 | Card that asks for fake 3-D Secure | `1111 1111 1` (or `4000 0025 0000 3155`) |
@@ -25,20 +26,21 @@ A guided tour of Plantify. Everything is fake: no real payments, no real email, 
 
 ## 2. Admin as owner (about 2 minutes)
 
-Sign in to the admin app as `owner@plantify.test`.
+Open the admin app and click *Sign in as Owner*.
 
 1. **Dashboard.** Revenue, orders and top products for the selected period. The order you just placed is in the numbers.
 2. **Orders.** Open your order. Move it through *Start processing → Mark as shipped → Mark as delivered* (one button per step), or refund it with the *restock* option.
 3. **Inventory.** The paid order wrote a *sale* row in the stock ledger. Open the variant's movements, then add a restock.
 4. **Webhooks.** Add an endpoint (for example a https://webhook.site URL), then trigger an order event and watch the signed delivery appear in the delivery log; failed deliveries can be retried.
-5. **Audit log.** Every staff action above is recorded with who did it.
+5. **Staff & roles.** The owner is fixed; the catalog manager and order manager always hold one role each, so picking a role for one swaps it with the other. It takes effect on their next request.
+6. **Audit log.** Every staff action above is recorded with who did it.
 
 ## 3. Roles (about 1 minute)
 
-Sign out and sign in as `catalog@plantify.test`.
+Sign out and click *Sign in as Catalog manager*, then try *Order manager*.
 
-- The sidebar loses *Customers*, *Webhooks*, *Staff & roles* and *Audit log*.
-- The dashboard shows stock only, with no revenue.
+- The catalog manager has *Products*, *Categories* and *Inventory* only. The order manager has *Orders* and *Customers* only.
+- Neither sees revenue. Each dashboard shows count cards for their own area: catalog and stock counts for the catalog manager, order pipeline and customer counts for the order manager.
 - The refund action is gone from orders.
 - Opening a hidden URL such as `/staff` shows "You don't have access". The API enforces the same rules, so calling those endpoints directly returns 403.
 

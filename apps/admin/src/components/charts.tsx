@@ -18,11 +18,13 @@ export const longDate = (iso: string) =>
   new Date(`${iso}T00:00:00Z`).toLocaleDateString("en-US", { weekday: "short", month: "short", day: "numeric", year: "numeric", timeZone: "UTC" });
 
 /** Round the axis maximum up to a clean number (1, 2, 2.5, 5 × 10ⁿ) and return evenly spaced ticks. */
-function niceScale(max: number, tickCount = 4) {
+function niceScale(max: number, tickCount = 4, integer = false) {
   if (max <= 0) return { top: 1, ticks: [0, 1] };
   const rough = max / tickCount;
   const pow = 10 ** Math.floor(Math.log10(rough));
-  const step = ([1, 2, 2.5, 5, 10].map((m) => m * pow).find((s) => s >= rough) ?? 10 * pow);
+  // Counts never get fractional ticks: skip 2.5 and never step by less than 1.
+  const steps = (integer ? [1, 2, 5, 10] : [1, 2, 2.5, 5, 10]).map((m) => Math.max(integer ? 1 : 0, m * pow));
+  const step = steps.find((s) => s >= rough) ?? 10 * pow;
   const top = Math.ceil(max / step) * step;
   return { top, ticks: Array.from({ length: Math.round(top / step) + 1 }, (_, i) => i * step) };
 }
@@ -113,6 +115,7 @@ export function AreaChart({
   secondaryLabel,
   formatValue = moneyFull,
   formatTick = moneyCompact,
+  integerAxis = false,
   summary,
 }: {
   points: AreaPoint[];
@@ -120,6 +123,8 @@ export function AreaChart({
   secondaryLabel?: string;
   formatValue?: (n: number) => string;
   formatTick?: (n: number) => string;
+  /** Use whole-number ticks (for counts). */
+  integerAxis?: boolean;
   summary: string;
 }) {
   const [ref, width] = useWidth<HTMLDivElement>();
@@ -131,7 +136,7 @@ export function AreaChart({
   const innerW = Math.max(0, width - AREA.left - AREA.right);
   const innerH = AREA.height - AREA.top - AREA.bottom;
   const max = Math.max(0, ...points.map((p) => p.value));
-  const { top, ticks } = niceScale(max);
+  const { top, ticks } = niceScale(max, 4, integerAxis);
 
   const x = (i: number) => AREA.left + (points.length <= 1 ? innerW / 2 : (i / (points.length - 1)) * innerW);
   const y = (v: number) => AREA.top + innerH - (v / top) * innerH;
