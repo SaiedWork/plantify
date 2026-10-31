@@ -3,6 +3,7 @@ import { addCartItemSchema, updateCartItemSchema, type AddCartItemInput } from '
 import type { Request, Response } from 'express';
 import { z } from 'zod';
 import { Public } from '../auth/access.js';
+import { RateLimit } from '../common/rate-limit.js';
 import { ZodPipe } from '../common/zod-pipe.js';
 import { readCookie } from '../mail/demo-inbox-cookie.js';
 import { CartService } from './cart.service.js';
@@ -12,6 +13,7 @@ const UUID = z.string().uuid();
 
 /** Guest-friendly cart: identified by an unguessable httpOnly cookie, claimed by a user at checkout. */
 @Public()
+@RateLimit('cart')
 @Controller('cart')
 export class CartController {
   constructor(private readonly cart: CartService) {}

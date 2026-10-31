@@ -1,5 +1,5 @@
-import { BadRequestException, ConflictException, ForbiddenException, Injectable, NotFoundException } from '@nestjs/common';
-import { computeTotals, type Address, type CardInput, type PayResult } from '@plantify/contracts';
+import { BadRequestException, ConflictException, ForbiddenException, Injectable, NotFoundException, ServiceUnavailableException } from '@nestjs/common';
+import { computeTotals, DAILY_NEW_ORDERS_CAP, type Address, type CardInput, type PayResult } from '@plantify/contracts';
 import { sql } from 'drizzle-orm';
 import { InjectDb, type Db } from '../db/db.module.js';
 import { MockPaymentProvider } from '../payments/mock-payment.provider.js';
@@ -20,6 +20,11 @@ export class CheckoutService {
     const created = await this.db.transaction(async (tx) => {
       // Serialises order numbering across concurrent checkouts.
       await tx.execute(sql`select pg_advisory_xact_lock(4243)`);
+
+      const { rows: today } = await tx.execute<{ n: number }>(sql`select count(*)::int as n from "order" where created_at > now() - interval '24 hours'`);
+      if (today[0]!.n >= DAILY_NEW_ORDERS_CAP) {
+        throw new ServiceUnavailableException('The demo has reached its daily order limit. Please try again tomorrow.');
+      }
 
       const { rows: carts } = await tx.execute<{ user_id: string | null }>(sql`select user_id from cart where id = ${cartId} for update`);
       if (!carts[0]) throw new BadRequestException('Your cart is empty');

@@ -4,6 +4,7 @@ import type { Request, Response } from 'express';
 import { z } from 'zod';
 import type { AuthedRequest } from '../auth/access.js';
 import { CART_COOKIE } from '../cart/cart.controller.js';
+import { RateLimit } from '../common/rate-limit.js';
 import { ZodPipe } from '../common/zod-pipe.js';
 import { grantInbox } from '../mail/grant-inbox.js';
 import { readCookie } from '../mail/demo-inbox-cookie.js';
@@ -19,12 +20,14 @@ export class OrdersController {
     private readonly orders: OrdersService,
   ) {}
 
+  @RateLimit('checkout')
   @Post('checkout/orders')
   create(@Req() req: AuthedRequest, @Body(new ZodPipe(createOrderSchema)) body: { shippingAddress: Address }) {
     const cart = UUID.safeParse(readCookie(req.headers.cookie, CART_COOKIE));
     return this.checkout.createOrder(req.user!.id, cart.success ? cart.data : null, body.shippingAddress);
   }
 
+  @RateLimit('payment')
   @Post('checkout/orders/:id/pay')
   async pay(
     @Req() req: AuthedRequest,
@@ -37,6 +40,7 @@ export class OrdersController {
     return this.checkout.pay(req.user!.id, id, body.card);
   }
 
+  @RateLimit('payment')
   @Post('checkout/payments/:id/confirm')
   async confirm(@Req() req: AuthedRequest, @Res({ passthrough: true }) res: Response, @Param('id') id: string) {
     grantInbox(req as Request, res, req.user!.email);

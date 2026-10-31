@@ -1,8 +1,10 @@
 import { Injectable } from '@nestjs/common';
+import { DAILY_NEW_USERS_CAP } from '@plantify/contracts';
 import { account, rateLimit, session, user, verification } from '@plantify/db';
+import { count, gt, sql } from 'drizzle-orm';
 import { betterAuth } from 'better-auth';
 import { drizzleAdapter } from 'better-auth/adapters/drizzle';
-import { createAuthMiddleware } from 'better-auth/api';
+import { APIError, createAuthMiddleware } from 'better-auth/api';
 import { emailOTP } from 'better-auth/plugins';
 import { requireEnv } from '../env.js';
 import { InjectDb, type Db } from '../db/db.module.js';
@@ -40,6 +42,18 @@ function createAuth(db: Db, mail: MailService) {
     },
     // Switched off only by the e2e suite, which creates dozens of users from one IP.
     rateLimit: { enabled: process.env.AUTH_RATE_LIMIT !== 'off', storage: 'database', window: 60, max: 60 },
+    databaseHooks: {
+      user: {
+        create: {
+          before: async () => {
+            const [row] = await db.select({ n: count() }).from(user).where(gt(user.createdAt, sql`now() - interval '24 hours'`));
+            if ((row?.n ?? 0) >= DAILY_NEW_USERS_CAP) {
+              throw new APIError('SERVICE_UNAVAILABLE', { message: 'The demo has reached its daily sign-up limit. Please try again tomorrow.' });
+            }
+          },
+        },
+      },
+    },
     plugins: [
       emailOTP({
         otpLength: 6,
