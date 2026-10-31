@@ -17,8 +17,9 @@
 | 5 Customer account (orders, invoice page, addresses, settings) | done |
 | 6 Admin core (products, inventory, orders, refunds, customers, uploads) | done |
 | 7 Sales dashboard, outbound webhooks, staff and audit log | done |
-| 8 Hardening and deploy (7-day reset cron, rate limits and caps, Vercel and Neon) | in progress: 8a rate limits, caps, banners and 8b reset done; 8c deploy not started |
+| 8 Hardening and deploy (7-day reset cron, rate limits and caps, Vercel and Neon) | 8a rate limits, caps, banners, 8b reset and 8c deploy configuration done; the actual deploy is deferred to the end (see 10) |
 | 9 Polish, README, 5-minute demo script | not started |
+| 10 UX/UI finalization, then go live (deploy per [DEPLOY.md](DEPLOY.md) and prod smoke test) | not started; always the last task |
 
 **Differences from the plan so far**
 - shadcn components are initialised per app (storefront, admin) rather than in a shared `packages/ui`; that package is an empty stub.
@@ -27,6 +28,7 @@
 - Playwright browser tests are not in the repo yet; API behaviour is covered by Vitest e2e tests (`pnpm --filter @plantify/api test:e2e`).
 - Reset (8b): `GET|POST /api/internal/reset` (under the `/api` prefix; `Authorization: Bearer $CRON_SECRET`) wipes and reseeds once `meta.last_reset_at` is 7 days old, `POST ?force=1` skips the age check, and uploads are cleared through `StorageProvider.deleteAll()`. Vercel Cron only issues GET, hence both verbs; `apps/api/vercel.json` schedules it daily. `GET /api/demo/status` feeds the banner in both apps. The manual GitHub workflow runs `pnpm db:reset` and needs a `DATABASE_URL` secret. The cron and Blob cleanup have not run on Vercel yet.
 - Abuse protection (8a): Better Auth rate-limits auth and OTP; `@RateLimit(bucket)` limits cart, checkout and payment per IP in the shared `rate_limit` table (limits in `packages/contracts/src/limits.ts`); rolling 24h caps on new users and orders. `trust proxy` is set only in production.
+- Deploy configuration (8c): `apps/api/api/index.js` re-exports `dist/serverless.js` (a cached Nest app, compiled by `nest build` because Nest needs tsc decorator metadata); `apps/api/vercel.json` rewrites everything to it, builds via Turbo and runs `pnpm --filter @plantify/db migrate:deploy` as a build step (production deployments only, direct Neon URL). Both Next apps allow the Vercel Blob host in `images.remotePatterns`. Nothing is deployed yet by decision: the deploy happens after milestone 10. Steps and env vars are in [DEPLOY.md](DEPLOY.md).
 - Production paths (Neon driver, Vercel Blob uploads, `waitUntil` webhook delivery, cron) are written but have not been run on Vercel or Neon.
 
 ## Context
@@ -149,6 +151,7 @@ Validation: `nestjs-zod` DTOs from `packages/contracts`, Swagger/OpenAPI at `/do
 7. **Dashboard stats** + outbound webhooks UI + staff/audit.
 8. **Hardening + deploy**: rate limits, caps, reset cron, three Vercel projects, Neon, env docs, banners/noindex.
 9. **Polish**: empty/loading/error states, a11y pass, README + 5-minute demo script.
+10. **UX/UI finalization + go live** (always last): a general pass of small adjustments to the existing design (no redesign), supplied by the dev user, then the deploy from DEPLOY.md and the production smoke test (Verification step 5).
 
 ## Testing
 - Vitest unit: pricing/totals, order state machine, magic-card logic, OTP rules, permission map.

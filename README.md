@@ -48,6 +48,7 @@ pnpm --filter @plantify/db generate    # new Drizzle migration after a schema ch
 ## Docs
 
 - [docs/PLAN.md](docs/PLAN.md): project plan and milestone status
+- [docs/DEPLOY.md](docs/DEPLOY.md): Vercel + Neon deployment steps and env vars
 - [docs/COLLABORATION.md](docs/COLLABORATION.md): how we work (task loop)
 - [docs/Plantify-Auth-Journeys.md](docs/Plantify-Auth-Journeys.md): customer auth flows
 - [CLAUDE.md](CLAUDE.md): architecture notes and guidance for Claude Code

@@ -9,6 +9,7 @@
     "typecheck": "tsc --noEmit",
     "test": "echo \"no tests yet\"",
     "migrate": "tsx --env-file=../../.env src/migrate.ts",
+    "migrate:deploy": "tsx src/migrate.ts",
     "seed": "tsx --env-file=../../.env src/cli.ts seed",
     "reset": "tsx --env-file=../../.env src/cli.ts reset",
     "generate": "drizzle-kit generate",
