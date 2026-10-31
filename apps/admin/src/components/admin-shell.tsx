@@ -2,17 +2,15 @@
 
 import { Dialog } from '@base-ui/react/dialog';
 import { AppHeader, BreadcrumbLabelContext } from '@/components/app-header';
-import { Button } from '@/components/ui/button';
-import { authClient } from '@/lib/auth-client';
+import { UserMenu } from '@/components/user-menu';
 import { useApi } from '@/lib/use-api';
 import { cn } from '@/lib/utils';
-import { ROLE_LABELS, type Permission, type Role } from '@plantify/contracts';
+import type { Permission, Role } from '@plantify/contracts';
 import {
 	Boxes,
 	History,
 	LayoutDashboard,
 	Leaf,
-	LogOut,
 	Package,
 	ShieldCheck,
 	ShoppingBag,
@@ -54,9 +52,8 @@ const NAV: {
 ];
 
 function SidebarContent({ onNavigate }: { onNavigate?: () => void }) {
-	const router = useRouter();
 	const pathname = usePathname();
-	const { me, can } = useMe();
+	const { can } = useMe();
 	return (
 		<>
 			<div className="flex items-center gap-2 px-4 py-4 font-semibold text-green-800 dark:text-green-400">
@@ -81,24 +78,7 @@ function SidebarContent({ onNavigate }: { onNavigate?: () => void }) {
 					);
 				})}
 			</nav>
-			<div className="mt-auto space-y-2 border-t p-3 text-sm">
-				<div>
-					<p className="font-medium">{me.name}</p>
-					<p className="text-xs text-muted-foreground">{ROLE_LABELS[me.role]}</p>
-				</div>
-				<Button
-					variant="outline"
-					size="sm"
-					className="w-full"
-					onClick={async () => {
-						await authClient.signOut();
-						router.push('/login');
-						router.refresh();
-					}}
-				>
-					<LogOut className="size-4" /> Sign out
-				</Button>
-			</div>
+			<UserMenu />
 		</>
 	);
 }
