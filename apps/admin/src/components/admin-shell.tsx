@@ -74,7 +74,7 @@ export function AdminShell({ children }: { children: ReactNode }) {
 				>
 					Skip to content
 				</a>
-				<aside className="flex min-w-0 flex-col border-b bg-muted/30 md:fixed md:inset-y-0 md:left-0 md:w-[220px] md:overflow-y-auto md:border-b-0 md:border-r">
+				<aside className="flex min-w-0 flex-col border-b bg-muted/30 md:fixed md:bottom-0 md:left-0 md:top-7 print:top-0 md:w-[220px] md:overflow-y-auto md:border-b-0 md:border-r">
 					<div className="flex items-center justify-between gap-2 px-4 py-4">
 						<span className="flex items-center gap-2 font-semibold text-green-800 dark:text-green-400">
 							<Leaf className="size-5" /> Plantify Admin
