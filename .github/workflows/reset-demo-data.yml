@@ -1,0 +1,20 @@
+name: Reset demo data
+# Manual escape hatch: wipes and reseeds the production database right now.
+# The daily Vercel cron already resets it every 7 days. Needs the DATABASE_URL secret (Neon direct URL).
+on: workflow_dispatch
+
+jobs:
+  reset:
+    runs-on: ubuntu-latest
+    env:
+      DATABASE_URL: ${{ secrets.DATABASE_URL }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: pnpm/action-setup@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+      - run: pnpm --filter @plantify/contracts build
+      - run: pnpm --filter @plantify/db exec tsx src/cli.ts reset

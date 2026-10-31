@@ -17,7 +17,7 @@
 | 5 Customer account (orders, invoice page, addresses, settings) | done |
 | 6 Admin core (products, inventory, orders, refunds, customers, uploads) | done |
 | 7 Sales dashboard, outbound webhooks, staff and audit log | done |
-| 8 Hardening and deploy (7-day reset cron, rate limits and caps, Vercel and Neon) | in progress: 8a rate limits, caps, banners done; 8b reset, 8c deploy not started |
+| 8 Hardening and deploy (7-day reset cron, rate limits and caps, Vercel and Neon) | in progress: 8a rate limits, caps, banners and 8b reset done; 8c deploy not started |
 | 9 Polish, README, 5-minute demo script | not started |
 
 **Differences from the plan so far**
@@ -25,7 +25,7 @@
 - No generated OpenAPI client (`packages/api-client`) or Swagger page yet; apps use hand-written fetch helpers with response types shared from `packages/contracts`.
 - Seed product images are generated SVG illustrations (`pnpm --filter @plantify/db images`), not WebP files.
 - Playwright browser tests are not in the repo yet; API behaviour is covered by Vitest e2e tests (`pnpm --filter @plantify/api test:e2e`).
-- The `/internal/reset` endpoint and the reset countdown banner belong to milestone 8 and do not exist yet. Only `pnpm db:reset` works.
+- Reset (8b): `GET|POST /api/internal/reset` (under the `/api` prefix; `Authorization: Bearer $CRON_SECRET`) wipes and reseeds once `meta.last_reset_at` is 7 days old, `POST ?force=1` skips the age check, and uploads are cleared through `StorageProvider.deleteAll()`. Vercel Cron only issues GET, hence both verbs; `apps/api/vercel.json` schedules it daily. `GET /api/demo/status` feeds the banner in both apps. The manual GitHub workflow runs `pnpm db:reset` and needs a `DATABASE_URL` secret. The cron and Blob cleanup have not run on Vercel yet.
 - Abuse protection (8a): Better Auth rate-limits auth and OTP; `@RateLimit(bucket)` limits cart, checkout and payment per IP in the shared `rate_limit` table (limits in `packages/contracts/src/limits.ts`); rolling 24h caps on new users and orders. `trust proxy` is set only in production.
 - Production paths (Neon driver, Vercel Blob uploads, `waitUntil` webhook delivery, cron) are written but have not been run on Vercel or Neon.
 
