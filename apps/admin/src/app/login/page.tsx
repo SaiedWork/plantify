@@ -1,12 +1,10 @@
 "use client";
 
 import { useRouter } from "next/navigation";
-import { useState, type FormEvent } from "react";
+import { useState } from "react";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
 import { authClient, DEMO_ACCOUNTS, DEMO_PASSWORD } from "@/lib/auth-client";
 
 const STAFF_ROLES = ["owner", "catalog_manager"];
@@ -17,29 +15,26 @@ export default function LoginPage() {
 
   async function signIn(email: string, password: string) {
     setBusy(true);
-    const { error } = await authClient.signIn.email({ email, password });
-    if (error) {
+    try {
+      const { error } = await authClient.signIn.email({ email, password });
+      if (error) {
+        toast.error(error.message ?? "Sign in failed");
+        return;
+      }
+      // Customers share the same auth backend; keep them out of the back office.
+      const me = await fetch("/api/me", { cache: "no-store" });
+      const role = me.ok ? ((await me.json()) as { role: string }).role : null;
+      if (!role || !STAFF_ROLES.includes(role)) {
+        await authClient.signOut();
+        toast.error("This account does not have admin access.");
+        return;
+      }
+      router.push("/");
+      router.refresh();
+    } finally {
+      // The router may keep this page mounted (hidden) after navigating away, so never leave it stuck on busy.
       setBusy(false);
-      toast.error(error.message ?? "Sign in failed");
-      return;
     }
-    // Customers share the same auth backend; keep them out of the back office.
-    const me = await fetch("/api/me", { cache: "no-store" });
-    const role = me.ok ? ((await me.json()) as { role: string }).role : null;
-    if (!role || !STAFF_ROLES.includes(role)) {
-      await authClient.signOut();
-      setBusy(false);
-      toast.error("This account does not have admin access.");
-      return;
-    }
-    router.push("/");
-    router.refresh();
-  }
-
-  function onSubmit(e: FormEvent<HTMLFormElement>) {
-    e.preventDefault();
-    const form = new FormData(e.currentTarget);
-    void signIn(String(form.get("email")).trim().toLowerCase(), String(form.get("password")));
   }
 
   return (
@@ -49,7 +44,7 @@ export default function LoginPage() {
           <CardTitle role="heading" aria-level={1}>Plantify Admin</CardTitle>
           <CardDescription>Internal back office. This is a demo with fake data.</CardDescription>
         </CardHeader>
-        <CardContent className="space-y-6">
+        <CardContent>
           <div className="space-y-2">
             <p className="text-sm font-medium">Demo login</p>
             {DEMO_ACCOUNTS.map((a) => (
@@ -65,20 +60,6 @@ export default function LoginPage() {
               </Button>
             ))}
           </div>
-
-          <form onSubmit={onSubmit} className="space-y-4 border-t pt-4">
-            <div className="space-y-2">
-              <Label htmlFor="email">Email</Label>
-              <Input id="email" name="email" type="email" required autoComplete="username" />
-            </div>
-            <div className="space-y-2">
-              <Label htmlFor="password">Password</Label>
-              <Input id="password" name="password" type="password" required autoComplete="current-password" />
-            </div>
-            <Button type="submit" className="w-full" disabled={busy}>
-              Sign in
-            </Button>
-          </form>
         </CardContent>
       </Card>
     </div>
