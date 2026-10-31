@@ -61,7 +61,7 @@ export function TableToolbar({
 	return (
 		<div className={cn('mb-3 flex flex-wrap items-end gap-2', className)}>
 			{children}
-			{total != null && <p className="ml-auto pr-3 pb-0 text-sm font-medium">{total} total</p>}
+			{total != null && <p className="ml-auto pr-3 pb-2 text-sm font-medium">{total} total</p>}
 		</div>
 	);
 }
