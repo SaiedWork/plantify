@@ -8,7 +8,7 @@ import { PRODUCT_STATUSES } from "@plantify/contracts";
 import { buttonVariants } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Select } from "@/components/ui/select";
-import { EmptyState, PageHeader, Pager, ProductBadge, RequirePermission, Skeleton, TableShell, Td, Th } from "@/components/page-bits";
+import { EmptyState, ErrorState, PageHeader, Pager, ProductBadge, RequirePermission, Skeleton, TableShell, Td, Th } from "@/components/page-bits";
 import { qs } from "@/lib/api-client";
 import { formatPrice } from "@/lib/format";
 import { imageSrc } from "@/lib/images";
@@ -20,7 +20,7 @@ export default function ProductsPage() {
   const [status, setStatus] = useState<ProductStatus | "">("");
   const [page, setPage] = useState(1);
   const search = useDebounced(q);
-  const { data, loading } = useApi<Page<AdminProductListItem>>(`/admin/products${qs({ q: search, status, page, pageSize: 15 })}`);
+  const { data, loading, error, reload } = useApi<Page<AdminProductListItem>>(`/admin/products${qs({ q: search, status, page, pageSize: 15 })}`);
 
   return (
     <RequirePermission permission="catalog:manage">
@@ -57,6 +57,8 @@ export default function ProductsPage() {
 
       {loading && !data ? (
         <Skeleton />
+      ) : error ? (
+        <ErrorState onRetry={reload} />
       ) : !data || data.items.length === 0 ? (
         <EmptyState>No products match.</EmptyState>
       ) : (

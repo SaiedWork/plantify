@@ -56,7 +56,7 @@ function VerifyForm() {
     <div className="mx-auto flex max-w-md px-4 py-12">
       <Card className="w-full">
         <CardHeader>
-          <CardTitle>Check your demo inbox</CardTitle>
+          <CardTitle role="heading" aria-level={1}>Check your demo inbox</CardTitle>
           <CardDescription>
             We &quot;sent&quot; a 6-digit code to <strong>{email}</strong>. Because this is a demo, it
             arrives in the in-app inbox instead of a real mailbox.

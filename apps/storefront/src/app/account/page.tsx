@@ -9,7 +9,7 @@ import { useApi } from "@/lib/use-api";
 
 export default function AccountOverview() {
   const { data: session } = authClient.useSession();
-  const { data: orders, loading } = useApi<OrderSummary[]>("/orders");
+  const { data: orders, loading, error } = useApi<OrderSummary[]>("/orders");
 
   return (
     <div className="space-y-6">
@@ -27,6 +27,10 @@ export default function AccountOverview() {
         </div>
         {loading ? (
           <div className="h-24 animate-pulse rounded-xl bg-muted" />
+        ) : error && !orders ? (
+          <p role="alert" className="rounded-xl border border-dashed p-6 text-center text-sm text-muted-foreground">
+            We couldn&apos;t load your orders. Refresh to try again.
+          </p>
         ) : !orders || orders.length === 0 ? (
           <p className="rounded-xl border border-dashed p-6 text-center text-sm text-muted-foreground">
             No orders yet.{" "}

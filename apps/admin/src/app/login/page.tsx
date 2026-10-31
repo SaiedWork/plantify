@@ -46,7 +46,7 @@ export default function LoginPage() {
     <div className="mx-auto flex min-h-screen max-w-md items-center px-4">
       <Card className="w-full">
         <CardHeader>
-          <CardTitle>Plantify Admin</CardTitle>
+          <CardTitle role="heading" aria-level={1}>Plantify Admin</CardTitle>
           <CardDescription>Internal back office. This is a demo with fake data.</CardDescription>
         </CardHeader>
         <CardContent className="space-y-6">

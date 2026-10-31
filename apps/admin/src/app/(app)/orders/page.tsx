@@ -6,7 +6,7 @@ import type { AdminOrderListItem, OrderStatus, Page } from "@plantify/contracts"
 import { ORDER_STATUSES } from "@plantify/contracts";
 import { Input } from "@/components/ui/input";
 import { Select } from "@/components/ui/select";
-import { EmptyState, OrderBadge, orderStatusLabel, PageHeader, Pager, RequirePermission, Skeleton, TableShell, Td, Th } from "@/components/page-bits";
+import { EmptyState, ErrorState, OrderBadge, orderStatusLabel, PageHeader, Pager, RequirePermission, Skeleton, TableShell, Td, Th } from "@/components/page-bits";
 import { qs } from "@/lib/api-client";
 import { formatDateTime, formatPrice } from "@/lib/format";
 import { useApi, useDebounced } from "@/lib/use-api";
@@ -16,7 +16,7 @@ export default function OrdersPage() {
   const [status, setStatus] = useState<OrderStatus | "">("");
   const [page, setPage] = useState(1);
   const search = useDebounced(q);
-  const { data, loading } = useApi<Page<AdminOrderListItem>>(`/admin/orders${qs({ q: search, status, page, pageSize: 15 })}`);
+  const { data, loading, error, reload } = useApi<Page<AdminOrderListItem>>(`/admin/orders${qs({ q: search, status, page, pageSize: 15 })}`);
 
   return (
     <RequirePermission permission="orders:view">
@@ -44,6 +44,8 @@ export default function OrdersPage() {
       </div>
       {loading && !data ? (
         <Skeleton />
+      ) : error ? (
+        <ErrorState onRetry={reload} />
       ) : !data || data.items.length === 0 ? (
         <EmptyState>No orders match.</EmptyState>
       ) : (

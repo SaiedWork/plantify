@@ -195,16 +195,16 @@ function Variants({ product, reload }: { product: AdminProductDetail; reload: ()
       </TableShell>
       <form onSubmit={add} className="flex flex-wrap items-end gap-2">
         <div className="space-y-1">
-          <Label className="text-xs">New variant</Label>
-          <Input value={label} onChange={(e) => setLabel(e.target.value)} placeholder="e.g. Jumbo (10 in)" required maxLength={60} className="w-48" />
+          <Label htmlFor="variant-label" className="text-xs">New variant</Label>
+          <Input id="variant-label" value={label} onChange={(e) => setLabel(e.target.value)} placeholder="e.g. Jumbo (10 in)" required maxLength={60} className="w-48" />
         </div>
         <div className="space-y-1">
-          <Label className="text-xs">Price ($)</Label>
-          <Input value={price} onChange={(e) => setPrice(e.target.value)} inputMode="decimal" required className="w-24" />
+          <Label htmlFor="variant-price" className="text-xs">Price ($)</Label>
+          <Input id="variant-price" value={price} onChange={(e) => setPrice(e.target.value)} inputMode="decimal" required className="w-24" />
         </div>
         <div className="space-y-1">
-          <Label className="text-xs">Stock</Label>
-          <Input value={stock} onChange={(e) => setStock(e.target.value)} inputMode="numeric" required className="w-20" />
+          <Label htmlFor="variant-stock" className="text-xs">Stock</Label>
+          <Input id="variant-stock" value={stock} onChange={(e) => setStock(e.target.value)} inputMode="numeric" required className="w-20" />
         </div>
         <Button type="submit" variant="outline" disabled={busy || product.variants.length >= 10}>
           Add variant
