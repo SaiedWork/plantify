@@ -38,7 +38,7 @@ export async function seed(db: Db, now = new Date()) {
   faker.seed(42);
 
   // --- Catalog -----------------------------------------------------------
-  const categories = CATEGORIES.map((c, i) => ({ id: crypto.randomUUID(), sortOrder: i, ...c }));
+  const categories = CATEGORIES.map((c, i) => ({ id: faker.string.uuid(), sortOrder: i, ...c }));
   const categoryId = new Map(categories.map((c) => [c.slug, c.id]));
   await insertChunks(db, s.category, categories);
 
@@ -48,7 +48,7 @@ export async function seed(db: Db, now = new Date()) {
 
   for (const p of PRODUCTS) {
     const slug = slugify(p.name);
-    const productId = crypto.randomUUID();
+    const productId = faker.string.uuid();
     products.push({
       id: productId,
       slug,
@@ -65,7 +65,7 @@ export async function seed(db: Db, now = new Date()) {
     if (p.kind === 'plant') {
       for (const v of PLANT_VARIANTS) {
         variants.push({
-          id: crypto.randomUUID(),
+          id: faker.string.uuid(),
           productId,
           productName: p.name,
           sku: `${skuBase}-${v.suffix}`,
@@ -75,7 +75,7 @@ export async function seed(db: Db, now = new Date()) {
       }
     } else {
       variants.push({
-        id: crypto.randomUUID(),
+        id: faker.string.uuid(),
         productId,
         productName: p.name,
         sku: `${skuBase}-STD`,
@@ -95,7 +95,7 @@ export async function seed(db: Db, now = new Date()) {
   // --- Users -------------------------------------------------------------
   // Credentials (password accounts) are created in milestone 2 through Better Auth's hasher.
   const staffRows = STAFF.map((u) => ({
-    id: crypto.randomUUID(),
+    id: faker.string.uuid(),
     ...u,
     emailVerified: true,
     createdAt: new Date(now.getTime() - HISTORY_DAYS * DAY),
@@ -105,7 +105,7 @@ export async function seed(db: Db, now = new Date()) {
     const first = faker.person.firstName();
     const last = faker.person.lastName();
     return {
-      id: crypto.randomUUID(),
+      id: faker.string.uuid(),
       name: `${first} ${last}`,
       email: `${first}.${last}${i}@example.com`.toLowerCase().replace(/[^a-z0-9.@]/g, ''),
       emailVerified: true,
@@ -127,7 +127,7 @@ export async function seed(db: Db, now = new Date()) {
   await insertChunks(
     db,
     s.account,
-    staffRows.map((u) => ({ id: crypto.randomUUID(), userId: u.id, accountId: u.id, providerId: 'credential', password: passwordHash })),
+    staffRows.map((u) => ({ id: faker.string.uuid(), userId: u.id, accountId: u.id, providerId: 'credential', password: passwordHash })),
   );
   await insertChunks(
     db,
@@ -170,7 +170,7 @@ export async function seed(db: Db, now = new Date()) {
       ]);
       const picked = faker.helpers.arrayElements(variants, lineCount);
       planned.push({
-        id: crypto.randomUUID(),
+        id: faker.string.uuid(),
         userId: customer.id,
         placedAt,
         status: statusForAge((now.getTime() - placedAt.getTime()) / DAY),

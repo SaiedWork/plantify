@@ -1,6 +1,6 @@
 import { eq, sql } from 'drizzle-orm';
 import type { Db } from './client.js';
-import { meta } from './schema/index.js';
+import { meta, session, user } from './schema/index.js';
 import { seed } from './seed/seed.js';
 
 /** Arbitrary key so concurrent resets (two cron runs, cron + manual) serialise on one lock. */
@@ -27,6 +27,10 @@ export async function resetDatabase(db: Db, { now = new Date(), onlyIf }: ResetO
     await tx.execute(sql`select pg_advisory_xact_lock(${RESET_LOCK})`);
     if (onlyIf && !onlyIf(await getLastResetAt(tx as unknown as Db))) return null;
 
+    // Seed ids are deterministic, so seeded users (the demo staff) come back with the same ids; keep their
+    // sessions so a reset does not sign anyone out. Sessions of users created since the last reset go with them.
+    const sessions = await tx.select().from(session);
+
     const { rows } = await tx.execute<{ tablename: string }>(
       sql`select tablename from pg_tables where schemaname = 'public'`,
     );
@@ -34,6 +38,11 @@ export async function resetDatabase(db: Db, { now = new Date(), onlyIf }: ResetO
       const names = rows.map((r) => `"public"."${r.tablename}"`).join(', ');
       await tx.execute(sql.raw(`TRUNCATE TABLE ${names} RESTART IDENTITY CASCADE`));
     }
-    return seed(tx as unknown as Db, now);
+    const seeded = await seed(tx as unknown as Db, now);
+
+    const keep = new Set((await tx.select({ id: user.id }).from(user)).map((u) => u.id));
+    const restorable = sessions.filter((s) => keep.has(s.userId));
+    if (restorable.length > 0) await tx.insert(session).values(restorable);
+    return seeded;
   });
 }

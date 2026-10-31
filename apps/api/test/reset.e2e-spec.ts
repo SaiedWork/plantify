@@ -64,4 +64,23 @@ describe('Demo reset (e2e)', () => {
     const forced = await http().post('/api/internal/reset?force=1').set(auth());
     expect(forced.body).toMatchObject({ reset: true });
   }, 120_000);
+
+  it('keeps the seeded data and staff sessions, and removes only what was added', async () => {
+    const login = await http().post('/api/auth/sign-in/email').send({ email: 'owner@plantify.test', password: 'plantify-demo' });
+    const cookie = (login.headers['set-cookie'] as unknown as string[]).map((c) => c.split(';')[0]).join('; ');
+    const list = async () => (await http().get('/api/admin/products?pageSize=100').set('Cookie', cookie)).body.items as { id: string }[];
+
+    const seededIds = (await list()).map((p) => p.id);
+    expect(seededIds.length).toBeGreaterThan(0);
+    await db.execute(sql`insert into "user" (id, name, email, role) values ('added-user', 'Added', 'added@example.com', 'customer')`);
+    await db.execute(sql`insert into session (id, user_id, token, expires_at) values ('added-session', 'added-user', 'added-token', now() + interval '1 day')`);
+
+    expect((await http().post('/api/internal/reset?force=1').set(auth())).body).toMatchObject({ reset: true });
+
+    const after = await http().get('/api/admin/products?pageSize=100').set('Cookie', cookie);
+    expect(after.status).toBe(200);
+    expect((after.body.items as { id: string }[]).map((p) => p.id)).toEqual(seededIds);
+    const { rows } = await db.execute(sql`select 1 from "user" where id = 'added-user' union all select 1 from session where id = 'added-session'`);
+    expect(rows).toHaveLength(0);
+  }, 120_000);
 });
