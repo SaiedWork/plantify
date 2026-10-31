@@ -88,8 +88,11 @@ export class AdminOrdersService {
     if (!o) throw new NotFoundException('Order not found');
 
     const [items, payments, invoice, refunds] = await Promise.all([
-      this.db.execute<{ product_name: string; variant_label: string; sku: string; unit_price_cents: number; quantity: number }>(
-        sql`select product_name, variant_label, sku, unit_price_cents, quantity from order_item where order_id = ${id} order by id`,
+      this.db.execute<{ product_name: string; variant_label: string; sku: string; unit_price_cents: number; quantity: number; image_url: string | null }>(
+        sql`select oi.product_name, oi.variant_label, oi.sku, oi.unit_price_cents, oi.quantity,
+          (select i.url from product_image i join product_variant v on v.product_id = i.product_id
+            where v.id = oi.variant_id order by i.position limit 1) as image_url
+          from order_item oi where oi.order_id = ${id} order by oi.id`,
       ),
       this.db.execute<{ id: string; status: string; card_brand: string | null; card_last4: string | null; failure_reason: string | null; created_at: Date }>(
         sql`select id, status, card_brand, card_last4, failure_reason, created_at from payment where order_id = ${id} order by created_at desc`,
@@ -119,6 +122,7 @@ export class AdminOrdersService {
         sku: i.sku,
         unitPriceCents: i.unit_price_cents,
         quantity: i.quantity,
+        imageUrl: i.image_url,
       })),
       payments: payments.rows.map((p) => ({
         id: p.id,

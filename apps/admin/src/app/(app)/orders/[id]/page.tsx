@@ -1,5 +1,6 @@
 "use client";
 
+import Image from "next/image";
 import Link from "next/link";
 import { useParams } from "next/navigation";
 import { Suspense, useState } from "react";
@@ -7,10 +8,13 @@ import type { AdminOrderDetail } from "@plantify/contracts";
 import { canTransition } from "@plantify/contracts";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
 import { useMe } from "@/components/admin-shell";
+import { useBreadcrumbLabel } from "@/components/app-header";
 import { Badge, OrderBadge, PageHeader, RequirePermission, Skeleton } from "@/components/page-bits";
 import { api, errorMessage } from "@/lib/api-client";
 import { formatDateTime, formatPrice } from "@/lib/format";
+import { imageSrc } from "@/lib/images";
 import { useApi } from "@/lib/use-api";
 
 const NEXT_STEP = { paid: "processing", processing: "shipped", shipped: "delivered" } as const;
@@ -23,6 +27,7 @@ function OrderView() {
   const [busy, setBusy] = useState(false);
   const [restock, setRestock] = useState(true);
   const [reason, setReason] = useState("");
+  useBreadcrumbLabel(order?.number);
 
   async function act(action: () => Promise<unknown>, success: string) {
     setBusy(true);
@@ -58,29 +63,8 @@ function OrderView() {
       <PageHeader
         title={order.number}
         description={`Placed ${formatDateTime(order.placedAt)}`}
-        actions={
-          <>
-            <OrderBadge status={order.status} />
-            <Link href="/orders" className="inline-flex h-8 items-center px-3 text-sm underline">
-              All orders
-            </Link>
-          </>
-        }
+        actions={<OrderBadge status={order.status} />}
       />
-
-      <div className="flex flex-wrap gap-2">
-        {next && can("orders:fulfil") && (
-          <Button disabled={busy} onClick={() => act(() => api(`/admin/orders/${id}/status`, { method: "POST", json: { status: next } }), "Order updated")}>
-            {NEXT_LABEL[next]}
-          </Button>
-        )}
-        {order.status === "pending_payment" && can("orders:fulfil") && (
-          <Button variant="outline" disabled={busy} onClick={() => window.confirm("Cancel this unpaid order?") && void act(() => api(`/admin/orders/${id}/status`, { method: "POST", json: { status: "cancelled" } }), "Order cancelled")}>
-            Cancel order
-          </Button>
-        )}
-        {!can("orders:fulfil") && <p className="text-sm text-muted-foreground">You can view orders but not change them.</p>}
-      </div>
 
       <div className="grid gap-4 md:grid-cols-3">
         <section className="rounded-xl border p-4 text-sm">
@@ -122,20 +106,25 @@ function OrderView() {
         </section>
       </div>
 
-      <section className="rounded-xl border">
+      <section className="overflow-hidden rounded-xl border md:grid md:grid-cols-[1fr_16rem]">
         <ul className="divide-y text-sm">
           {order.items.map((i) => (
-            <li key={i.sku} className="flex items-center justify-between gap-3 px-4 py-2">
-              <span>
-                {i.productName} <span className="text-muted-foreground">· {i.variantLabel} · {i.sku}</span>
+            <li key={i.sku} className="flex items-center gap-3 px-4 py-3">
+              <span className="relative size-16 shrink-0 overflow-hidden rounded-md bg-muted">
+                {i.imageUrl && <Image src={imageSrc(i.imageUrl)} alt="" fill unoptimized className="object-cover" />}
               </span>
-              <span>
-                {i.quantity} × {formatPrice(i.unitPriceCents)} = <strong>{formatPrice(i.unitPriceCents * i.quantity)}</strong>
+              <span className="min-w-0 flex-1">
+                <span className="block font-medium">{i.productName}</span>
+                <span className="block text-muted-foreground">{i.variantLabel} · {i.sku}</span>
+              </span>
+              <span className="shrink-0 text-right">
+                {i.quantity} × {formatPrice(i.unitPriceCents)}
+                <strong className="block">{formatPrice(i.unitPriceCents * i.quantity)}</strong>
               </span>
             </li>
           ))}
         </ul>
-        <dl className="ml-auto w-full max-w-xs space-y-1 border-t p-4 text-sm">
+        <dl className="space-y-1 border-t p-4 text-sm md:border-l md:border-t-0">
           <div className="flex justify-between">
             <dt className="text-muted-foreground">Subtotal</dt>
             <dd>{formatPrice(order.subtotalCents)}</dd>
@@ -175,14 +164,16 @@ function OrderView() {
             <label className="flex items-center gap-2">
               <input type="checkbox" checked={restock} onChange={(e) => setRestock(e.target.checked)} /> Put items back in stock
             </label>
-            <input
+            <Input
               value={reason}
               onChange={(e) => setReason(e.target.value)}
               placeholder="Reason (optional)"
               maxLength={200}
-              className="h-9 min-w-64 rounded-lg border bg-background px-3 text-sm"
+              className="w-64"
               aria-label="Refund reason"
             />
+          </div>
+          <div className="flex justify-end">
             <Button
               variant="outline"
               disabled={busy}
@@ -196,6 +187,20 @@ function OrderView() {
           </div>
         </section>
       )}
+
+      <div className="flex flex-wrap items-center justify-end gap-2">
+        {next && can("orders:fulfil") && (
+          <Button disabled={busy} onClick={() => act(() => api(`/admin/orders/${id}/status`, { method: "POST", json: { status: next } }), "Order updated")}>
+            {NEXT_LABEL[next]}
+          </Button>
+        )}
+        {order.status === "pending_payment" && can("orders:fulfil") && (
+          <Button disabled={busy} onClick={() => window.confirm("Cancel this unpaid order?") && void act(() => api(`/admin/orders/${id}/status`, { method: "POST", json: { status: "cancelled" } }), "Order cancelled")}>
+            Cancel order
+          </Button>
+        )}
+        {!can("orders:fulfil") && <p className="text-sm text-muted-foreground">You can view orders but not change them.</p>}
+      </div>
     </div>
   );
 }

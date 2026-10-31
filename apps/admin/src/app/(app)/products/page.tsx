@@ -6,9 +6,9 @@ import { useState } from "react";
 import type { AdminProductListItem, Page, ProductStatus } from "@plantify/contracts";
 import { PRODUCT_STATUSES } from "@plantify/contracts";
 import { buttonVariants } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
+import { SearchInput } from "@/components/ui/search-input";
 import { Select } from "@/components/ui/select";
-import { EmptyState, ErrorState, PageHeader, Pager, ProductBadge, RequirePermission, Skeleton, TableShell, Td, Th } from "@/components/page-bits";
+import { EmptyState, ErrorState, PageHeader, Pager, TableToolbar, ProductBadge, RequirePermission, Skeleton, TableShell, Td, Th } from "@/components/page-bits";
 import { qs } from "@/lib/api-client";
 import { formatPrice } from "@/lib/format";
 import { imageSrc } from "@/lib/images";
@@ -33,12 +33,12 @@ export default function ProductsPage() {
           </Link>
         }
       />
-      <div className="mb-4 flex flex-wrap gap-2">
-        <Input
+      <TableToolbar total={data?.total}>
+        <SearchInput
           placeholder="Search by name…"
           value={q}
-          onChange={(e) => {
-            setQ(e.target.value);
+          onValueChange={(value) => {
+            setQ(value);
             setPage(1);
           }}
           className="max-w-xs"
@@ -53,7 +53,7 @@ export default function ProductsPage() {
           options={[{ value: "", label: "All statuses" }, ...PRODUCT_STATUSES.map((s) => ({ value: s, label: s }))]}
           aria-label="Filter by status"
         />
-      </div>
+      </TableToolbar>
 
       {loading && !data ? (
         <Skeleton />

@@ -208,7 +208,7 @@ export type AdminOrderDetail = AdminOrderListItem & {
   taxCents: number;
   currency: string;
   shippingAddress: Address;
-  items: OrderItemView[];
+  items: (OrderItemView & { imageUrl: string | null })[];
   payments: { id: string; status: string; cardBrand: string | null; cardLast4: string | null; failureReason: string | null; createdAt: string }[];
   invoice: { number: string; issuedAt: string } | null;
   refunds: { id: string; amountCents: number; restock: boolean; reason: string | null; createdAt: string }[];

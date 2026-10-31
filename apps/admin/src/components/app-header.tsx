@@ -5,7 +5,7 @@ import { Button } from '@/components/ui/button';
 import { ChevronRight, Menu } from 'lucide-react';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
-import { Fragment } from 'react';
+import { createContext, Fragment, useContext, useEffect } from 'react';
 
 const SEGMENT_LABELS: Record<string, string> = {
 	products: 'Products',
@@ -19,7 +19,18 @@ const SEGMENT_LABELS: Record<string, string> = {
 	new: 'New',
 };
 
-function crumbs(pathname: string) {
+/** Lets a detail page name its own breadcrumb (e.g. the order number) instead of the generic "Details". */
+export const BreadcrumbLabelContext = createContext<(label: string | null) => void>(() => {});
+
+export function useBreadcrumbLabel(label: string | null | undefined) {
+	const setLabel = useContext(BreadcrumbLabelContext);
+	useEffect(() => {
+		setLabel(label ?? null);
+		return () => setLabel(null);
+	}, [label, setLabel]);
+}
+
+function crumbs(pathname: string, lastLabel: string | null) {
 	const segments = pathname.split('/').filter(Boolean);
 	const items = [{ href: '/', label: 'Dashboard' }];
 	segments.forEach((segment, i) => {
@@ -28,11 +39,12 @@ function crumbs(pathname: string) {
 			label: SEGMENT_LABELS[segment] ?? 'Details',
 		});
 	});
+	if (lastLabel && items.length > 1 && items[items.length - 1].label === 'Details') items[items.length - 1].label = lastLabel;
 	return items;
 }
 
-export function AppHeader({ onOpenMenu }: { onOpenMenu: () => void }) {
-	const items = crumbs(usePathname());
+export function AppHeader({ onOpenMenu, lastLabel }: { onOpenMenu: () => void; lastLabel: string | null }) {
+	const items = crumbs(usePathname(), lastLabel);
 	return (
 		<header className="sticky top-7 z-30 flex h-14 items-center justify-between gap-4 border-b bg-background px-4 md:px-8 print:hidden">
 			<Button variant="ghost" size="icon" aria-label="Open menu" className="-ml-2 md:hidden" onClick={onOpenMenu}>

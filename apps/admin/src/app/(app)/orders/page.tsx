@@ -4,9 +4,9 @@ import Link from "next/link";
 import { useState } from "react";
 import type { AdminOrderListItem, OrderStatus, Page } from "@plantify/contracts";
 import { ORDER_STATUSES } from "@plantify/contracts";
-import { Input } from "@/components/ui/input";
+import { SearchInput } from "@/components/ui/search-input";
 import { Select } from "@/components/ui/select";
-import { EmptyState, ErrorState, OrderBadge, orderStatusLabel, PageHeader, Pager, RequirePermission, Skeleton, TableShell, Td, Th } from "@/components/page-bits";
+import { EmptyState, ErrorState, OrderBadge, orderStatusLabel, PageHeader, Pager, TableToolbar, RequirePermission, Skeleton, TableShell, Td, Th } from "@/components/page-bits";
 import { qs } from "@/lib/api-client";
 import { formatDateTime, formatPrice } from "@/lib/format";
 import { useApi, useDebounced } from "@/lib/use-api";
@@ -21,12 +21,12 @@ export default function OrdersPage() {
   return (
     <RequirePermission permission="orders:view">
       <PageHeader title="Orders" description="Newest first." />
-      <div className="mb-4 flex flex-wrap gap-2">
-        <Input
+      <TableToolbar total={data?.total}>
+        <SearchInput
           placeholder="Order number, customer name or email…"
           value={q}
-          onChange={(e) => {
-            setQ(e.target.value);
+          onValueChange={(value) => {
+            setQ(value);
             setPage(1);
           }}
           className="max-w-sm"
@@ -41,7 +41,7 @@ export default function OrdersPage() {
           options={[{ value: "", label: "All statuses" }, ...ORDER_STATUSES.map((s) => ({ value: s, label: orderStatusLabel(s) }))]}
           aria-label="Filter by status"
         />
-      </div>
+      </TableToolbar>
       {loading && !data ? (
         <Skeleton />
       ) : error ? (
@@ -65,12 +65,12 @@ export default function OrdersPage() {
               {data.items.map((o) => (
                 <tr key={o.id} className="hover:bg-muted/40">
                   <Td>
-                    <Link href={`/orders/${o.id}`} className="font-medium underline">
+                    <Link href={`/orders/${o.id}`} className="font-medium whitespace-nowrap underline">
                       {o.number}
                     </Link>
                   </Td>
-                  <Td>{formatDateTime(o.placedAt)}</Td>
-                  <Td>
+                  <Td className="whitespace-nowrap">{formatDateTime(o.placedAt)}</Td>
+                  <Td clamp>
                     {o.customer.name}
                     <span className="block text-xs text-muted-foreground">{o.customer.email}</span>
                   </Td>
@@ -78,7 +78,7 @@ export default function OrdersPage() {
                     <OrderBadge status={o.status} />
                   </Td>
                   <Td right>{o.itemCount}</Td>
-                  <Td right>{formatPrice(o.totalCents)}</Td>
+                  <Td right className="whitespace-nowrap">{formatPrice(o.totalCents)}</Td>
                 </tr>
               ))}
             </tbody>
