@@ -2,6 +2,15 @@
 
 import { useMe } from '@/components/admin-shell';
 import { Button } from '@/components/ui/button';
+import {
+	Pagination,
+	PaginationContent,
+	PaginationEllipsis,
+	PaginationItem,
+	PaginationLink,
+	PaginationNext,
+	PaginationPrevious,
+} from '@/components/ui/pagination';
 import { cn } from '@/lib/utils';
 import type { OrderStatus, Permission, ProductStatus } from '@plantify/contracts';
 import Link from 'next/link';
@@ -66,6 +75,24 @@ export function TableToolbar({
 	);
 }
 
+type PageSlot = number | 'gap-start' | 'gap-end';
+
+/** Seven slots at most, so the control keeps its width: 1 2 3 4 5 … 14, 1 … 6 7 8 … 14, 1 … 10 11 12 13 14. */
+function pageList(page: number, pages: number): PageSlot[] {
+	if (pages <= 7) return Array.from({ length: pages }, (_, i) => i + 1);
+	if (page <= 4) return [1, 2, 3, 4, 5, 'gap-end', pages];
+	if (page >= pages - 3) return [1, 'gap-start', pages - 4, pages - 3, pages - 2, pages - 1, pages];
+	return [1, 'gap-start', page - 1, page, page + 1, 'gap-end', pages];
+}
+
+/** Five slots for phones, where the page indicator shares the row: 1 2 3 … 14, 1 … 6 … 14, 1 … 12 13 14. */
+function compactPageList(page: number, pages: number): PageSlot[] {
+	if (pages <= 5) return Array.from({ length: pages }, (_, i) => i + 1);
+	if (page <= 3) return [1, 2, 3, 'gap-end', pages];
+	if (page >= pages - 2) return [1, 'gap-start', pages - 2, pages - 1, pages];
+	return [1, 'gap-start', page, 'gap-end', pages];
+}
+
 export function Pager({
 	page,
 	pageSize,
@@ -79,24 +106,38 @@ export function Pager({
 }) {
 	const pages = Math.max(1, Math.ceil(total / pageSize));
 	if (pages <= 1) return null;
+
+	const controls = (slots: PageSlot[], className: string) => (
+		<Pagination className={cn('mx-0 w-auto', className)}>
+			<PaginationContent>
+				<PaginationItem>
+					<PaginationPrevious disabled={page <= 1} onClick={() => onPage(page - 1)} />
+				</PaginationItem>
+				{slots.map(p => (
+					<PaginationItem key={p}>
+						{typeof p === 'number' ? (
+							<PaginationLink isActive={p === page} aria-label={`Go to page ${p}`} onClick={() => onPage(p)}>
+								{p}
+							</PaginationLink>
+						) : (
+							<PaginationEllipsis />
+						)}
+					</PaginationItem>
+				))}
+				<PaginationItem>
+					<PaginationNext disabled={page >= pages} onClick={() => onPage(page + 1)} />
+				</PaginationItem>
+			</PaginationContent>
+		</Pagination>
+	);
+
 	return (
 		<div className="mt-3 flex items-center justify-between gap-3 text-sm">
-			<span className="pl-3 text-muted-foreground">
+			<span className="pl-3 whitespace-nowrap text-muted-foreground">
 				{page} of {pages}
 			</span>
-			<div className="flex gap-2">
-				<Button variant="outline" size="sm" disabled={page <= 1} onClick={() => onPage(page - 1)}>
-					Previous
-				</Button>
-				<Button
-					variant="outline"
-					size="sm"
-					disabled={page >= pages}
-					onClick={() => onPage(page + 1)}
-				>
-					Next
-				</Button>
-			</div>
+			{controls(compactPageList(page, pages), 'sm:hidden')}
+			{controls(pageList(page, pages), 'hidden sm:flex')}
 		</div>
 	);
 }
