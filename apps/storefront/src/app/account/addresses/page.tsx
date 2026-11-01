@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, type FormEvent } from "react";
+import { useState, type SubmitEvent } from "react";
 import type { AddressView } from "@plantify/contracts";
 import { MAX_SAVED_ADDRESSES } from "@plantify/contracts";
 import { toast } from "sonner";
@@ -40,7 +40,7 @@ export default function AddressesPage() {
     }
   }
 
-  async function onSave(e: FormEvent) {
+  async function onSave(e: SubmitEvent) {
     e.preventDefault();
     if (!editing) return;
     const body = { ...toAddressPayload(editing.values), ...(editing.makeDefault ? { isDefault: true } : {}) };

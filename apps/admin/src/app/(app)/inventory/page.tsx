@@ -1,7 +1,7 @@
 "use client";
 
 import { useRouter, useSearchParams } from "next/navigation";
-import { Fragment, Suspense, useState, type FormEvent } from "react";
+import { Fragment, Suspense, useState, type SubmitEvent } from "react";
 import type { InventoryRow, Page, StockMovement } from "@plantify/contracts";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
@@ -41,7 +41,7 @@ function AdjustPanel({ row, onDone }: { row: InventoryRow; onDone: () => void })
   const [note, setNote] = useState("");
   const [busy, setBusy] = useState(false);
 
-  async function submit(e: FormEvent) {
+  async function submit(e: SubmitEvent) {
     e.preventDefault();
     const n = Number(delta);
     if (!Number.isInteger(n) || n === 0) {

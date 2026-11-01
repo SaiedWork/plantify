@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { useState, type FormEvent } from "react";
+import { useState, type SubmitEvent } from "react";
 import type { AddressView, PayResult } from "@plantify/contracts";
 import { toast } from "sonner";
 import { Button, buttonVariants } from "@/components/ui/button";
@@ -63,7 +63,7 @@ export default function CheckoutPage() {
     }
   }
 
-  async function onSubmit(e: FormEvent<HTMLFormElement>) {
+  async function onSubmit(e: SubmitEvent<HTMLFormElement>) {
     e.preventDefault();
     setBusy(true);
     try {

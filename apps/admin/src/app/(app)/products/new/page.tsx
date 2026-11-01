@@ -17,7 +17,7 @@ import { MAX_IMAGES_PER_PRODUCT, PRODUCT_STATUSES } from '@plantify/contracts';
 import { Plus, Trash2 } from 'lucide-react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
-import { useEffect, useRef, useState, type FormEvent } from 'react';
+import { useEffect, useRef, useState, type SubmitEvent } from 'react';
 import { toast } from 'sonner';
 
 type VariantRow = { label: string; price: string; threshold: string; stock: string };
@@ -94,7 +94,7 @@ export default function NewProductPage() {
 	const patchVariant = (i: number, patch: Partial<VariantRow>) =>
 		setVariants(vs => vs.map((v, j) => (j === i ? { ...v, ...patch } : v)));
 
-	async function onSubmit(e: FormEvent) {
+	async function onSubmit(e: SubmitEvent) {
 		e.preventDefault();
 		const parsed = variants.map(v => ({
 			label: v.label.trim(),

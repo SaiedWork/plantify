@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
-import { Suspense, useState, type FormEvent } from "react";
+import { Suspense, useState, type SubmitEvent } from "react";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
@@ -30,7 +30,7 @@ function SignInForm() {
     router.refresh();
   }
 
-  async function signInWithPassword(e: FormEvent<HTMLFormElement>) {
+  async function signInWithPassword(e: SubmitEvent<HTMLFormElement>) {
     e.preventDefault();
     const password = String(new FormData(e.currentTarget).get("password"));
     setBusy(true);
@@ -47,7 +47,7 @@ function SignInForm() {
     toast.error(error.message ?? "Sign in failed");
   }
 
-  async function requestCode(e: FormEvent) {
+  async function requestCode(e: SubmitEvent) {
     e.preventDefault();
     setBusy(true);
     const { error } = await authClient.emailOtp.sendVerificationOtp({ email, type: "sign-in" });

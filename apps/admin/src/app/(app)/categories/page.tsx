@@ -19,7 +19,7 @@ import { api, errorMessage } from '@/lib/api-client';
 import { useApi } from '@/lib/use-api';
 import type { AdminCategory } from '@plantify/contracts';
 import { Info, Plus, Trash2 } from 'lucide-react';
-import { useState, type FormEvent } from 'react';
+import { useState, type SubmitEvent } from 'react';
 import { toast } from 'sonner';
 
 const PAGE_SIZE = 15;
@@ -138,7 +138,7 @@ export default function CategoriesPage() {
 	const current = Math.min(page, pages);
 	const visible = filtered.slice((current - 1) * PAGE_SIZE, current * PAGE_SIZE);
 
-	async function add(e: FormEvent) {
+	async function add(e: SubmitEvent) {
 		e.preventDefault();
 		setBusy(true);
 		try {

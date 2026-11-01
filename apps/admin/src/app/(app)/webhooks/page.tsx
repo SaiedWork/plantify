@@ -32,7 +32,7 @@ import type {
 } from '@plantify/contracts';
 import { WEBHOOK_EVENTS } from '@plantify/contracts';
 import { Copy, Eye, EyeOff, Info, Plus, RefreshCw, Trash2 } from 'lucide-react';
-import { Fragment, useState, type FormEvent } from 'react';
+import { Fragment, useState, type SubmitEvent } from 'react';
 import { toast } from 'sonner';
 
 const STATUS_STYLE = {
@@ -264,7 +264,7 @@ function Endpoints({ onChange, version }: { onChange: () => void; version: numbe
 	const [events, setEvents] = useState<WebhookEventType[]>(['order.paid']);
 	const [busy, setBusy] = useState(false);
 
-	async function add(e: FormEvent) {
+	async function add(e: SubmitEvent) {
 		e.preventDefault();
 		setBusy(true);
 		try {

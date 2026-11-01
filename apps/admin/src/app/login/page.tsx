@@ -18,7 +18,7 @@ import {
 import { authClient, DEMO_ACCOUNTS, DEMO_PASSWORD } from '@/lib/auth-client';
 import { STAFF_ROLES } from '@plantify/contracts';
 import { useRouter } from 'next/navigation';
-import { useEffect, useState, type FormEvent } from 'react';
+import { useEffect, useState, type SubmitEvent } from 'react';
 import { toast } from 'sonner';
 
 const ROLE_QUESTION = [
@@ -69,7 +69,7 @@ export default function LoginPage() {
 		}
 	}
 
-	function onSubmit(event: FormEvent<HTMLFormElement>) {
+	function onSubmit(event: SubmitEvent<HTMLFormElement>) {
 		event.preventDefault();
 		const email = new FormData(event.currentTarget).get('role');
 		if (typeof email === 'string' && !busy) void signIn(email, DEMO_PASSWORD);
