@@ -13,6 +13,7 @@ import {
 	Td,
 	Th,
 } from '@/components/page-bits';
+import { Dialog } from '@base-ui/react/dialog';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import { Button } from '@/components/ui/button';
 import { Checkbox } from '@/components/ui/checkbox';
@@ -119,8 +120,10 @@ function EndpointCard({
 	}
 
 	return (
-		<li className={cn('space-y-3 rounded-xl border p-4', !endpoint.active && 'opacity-70')}>
-			<div className="flex flex-wrap items-start justify-between gap-2">
+		<li
+			className={cn('flex h-full flex-col gap-3 rounded-xl border p-4', !endpoint.active && 'opacity-70')}
+		>
+			<div className="flex items-start justify-between gap-2">
 				<div className="min-w-0">
 					<p className={cn('truncate text-sm', !builtin && 'font-mono')}>{endpointLabel(endpoint.url)}</p>
 					<p className="text-xs text-muted-foreground">
@@ -135,11 +138,12 @@ function EndpointCard({
 					)}
 				</div>
 				<Badge
-					className={
+					className={cn(
+						'shrink-0',
 						endpoint.active
 							? 'bg-green-100 text-green-900 dark:bg-green-500/20 dark:text-green-300'
-							: 'bg-gray-200 text-gray-800 dark:bg-zinc-800 dark:text-zinc-400'
-					}
+							: 'bg-gray-200 text-gray-800 dark:bg-zinc-800 dark:text-zinc-400',
+					)}
 				>
 					{endpoint.active ? 'active' : 'paused'}
 				</Badge>
@@ -185,44 +189,49 @@ function EndpointCard({
 				</div>
 			)}
 
-			<div className="flex flex-wrap items-center gap-2 text-sm">
-				<span className="text-muted-foreground">Signing secret:</span>
-				<code className="rounded bg-muted px-1.5 py-0.5 text-xs">
+			<div className="space-y-1 text-sm">
+				<div className="flex items-center justify-between gap-2">
+					<span className="text-muted-foreground">Signing secret</span>
+					<div className="flex items-center">
+						<Button
+							size="icon-sm"
+							variant="ghost"
+							aria-label={showSecret ? 'Hide signing secret' : 'Reveal signing secret'}
+							title={showSecret ? 'Hide signing secret' : 'Reveal signing secret'}
+							onClick={() => setShowSecret(s => !s)}
+						>
+							{showSecret ? <EyeOff /> : <Eye />}
+						</Button>
+						{showSecret && (
+							<Button
+								size="icon-sm"
+								variant="ghost"
+								aria-label="Copy signing secret"
+								title="Copy signing secret"
+								onClick={() =>
+									navigator.clipboard.writeText(endpoint.secret).then(() => toast.success('Copied'))
+								}
+							>
+								<Copy />
+							</Button>
+						)}
+					</div>
+				</div>
+				<code className="block rounded bg-muted px-1.5 py-1 text-xs break-all">
 					{showSecret ? endpoint.secret : 'whsec_••••••••••••••••'}
 				</code>
-				<Button
-					size="icon"
-					variant="ghost"
-					aria-label={showSecret ? 'Hide signing secret' : 'Reveal signing secret'}
-					title={showSecret ? 'Hide signing secret' : 'Reveal signing secret'}
-					onClick={() => setShowSecret(s => !s)}
-				>
-					{showSecret ? <EyeOff /> : <Eye />}
-				</Button>
-				{showSecret && (
-					<Button
-						size="icon"
-						variant="ghost"
-						aria-label="Copy signing secret"
-						title="Copy signing secret"
-						onClick={() =>
-							navigator.clipboard.writeText(endpoint.secret).then(() => toast.success('Copied'))
-						}
-					>
-						<Copy />
-					</Button>
-				)}
 			</div>
 
-			<div className="flex flex-wrap items-center justify-end gap-2">
-				<Button variant="outline" disabled={busy} onClick={test}>
-					Send test event
+			<div className="mt-auto flex flex-wrap items-center gap-2 pt-1">
+				<Button variant="outline" size="sm" disabled={busy} onClick={test}>
+					Send test
 				</Button>
-				<Button variant="outline" disabled={busy} onClick={() => setEditing(e => !e)}>
+				<Button variant="outline" size="sm" disabled={busy} onClick={() => setEditing(e => !e)}>
 					Edit events
 				</Button>
 				<Button
 					variant="outline"
+					size="sm"
 					disabled={busy}
 					onClick={() =>
 						act(
@@ -240,7 +249,8 @@ function EndpointCard({
 				{!builtin && (
 					<Button
 						variant="destructive"
-						size="icon"
+						size="icon-sm"
+						className="ml-auto"
 						aria-label={`Delete ${endpoint.url}`}
 						disabled={busy}
 						onClick={() => setConfirmingDelete(true)}
@@ -273,27 +283,6 @@ function Endpoints({ onChange, version }: { onChange: () => void; version: numbe
 	const { data, loading, error, reload } = useApi<WebhookEndpointView[]>(
 		`/admin/webhooks/endpoints?v=${version}`,
 	);
-	const [url, setUrl] = useState('');
-	const [events, setEvents] = useState<WebhookEventType[]>(['order.paid']);
-	const [busy, setBusy] = useState(false);
-
-	async function add(e: SubmitEvent) {
-		e.preventDefault();
-		setBusy(true);
-		try {
-			await api('/admin/webhooks/endpoints', { method: 'POST', json: { url: url.trim(), events } });
-			toast.success('Endpoint added');
-			setUrl('');
-			reload();
-			onChange();
-		} catch (err) {
-			toast.error(errorMessage(err));
-		} finally {
-			setBusy(false);
-		}
-	}
-
-	const atLimit = (data?.filter(ep => ep.url !== WEBHOOK_ECHO_URL).length ?? 0) >= 5;
 
 	const refresh = () => {
 		reload();
@@ -309,10 +298,11 @@ function Endpoints({ onChange, version }: { onChange: () => void; version: numbe
 				<ErrorState onRetry={reload} />
 			) : !data || data.length === 0 ? (
 				<EmptyState>
-					No endpoints yet. Add one below (webhook.site gives you a free test URL).
+					No endpoints yet. Use “Add endpoint” to register one (webhook.site gives you a free test
+					URL).
 				</EmptyState>
 			) : (
-				<ul className="space-y-3">
+				<ul className="grid gap-3 md:grid-cols-2 2xl:grid-cols-3">
 					{data.map(ep => (
 						// Keyed by server values so the card resets after a save.
 						<EndpointCard
@@ -323,35 +313,94 @@ function Endpoints({ onChange, version }: { onChange: () => void; version: numbe
 					))}
 				</ul>
 			)}
-			<form onSubmit={add} className="space-y-3 rounded-xl border border-dashed p-4">
-				<div className="space-y-1">
-					<Label htmlFor="hook-url">Add endpoint</Label>
-					<Input
-						id="hook-url"
-						value={url}
-						onChange={e => setUrl(e.target.value)}
-						placeholder="https://webhook.site/your-id"
-						required
-						maxLength={500}
-					/>
-					<p className="text-xs text-muted-foreground">
-						Optional: the built-in endpoint already works. Your own URL must be HTTPS and public (webhook.site gives you a free one). Up to 5 endpoints.
-					</p>
-				</div>
-				<div className="my-6">
-					<EventPicker value={events} onChange={setEvents} idPrefix="new" />
-				</div>
-				<div className="flex justify-end">
-					<Button
-						type="submit"
-						disabled={busy || atLimit || events.length === 0 || !url.trim()}
-						title={atLimit ? 'Delete an endpoint to add another' : undefined}
-					>
-						<Plus /> Add endpoint
-					</Button>
-				</div>
-			</form>
 		</section>
+	);
+}
+
+function AddEndpointDialog({
+	open,
+	onOpenChange,
+	atLimit,
+	onCreated,
+}: {
+	open: boolean;
+	onOpenChange: (open: boolean) => void;
+	atLimit: boolean;
+	onCreated: () => void;
+}) {
+	const [url, setUrl] = useState('');
+	const [events, setEvents] = useState<WebhookEventType[]>(['order.paid']);
+	const [busy, setBusy] = useState(false);
+
+	async function add(e: SubmitEvent) {
+		e.preventDefault();
+		setBusy(true);
+		try {
+			await api('/admin/webhooks/endpoints', { method: 'POST', json: { url: url.trim(), events } });
+			toast.success('Endpoint added');
+			onOpenChange(false);
+			onCreated();
+		} catch (err) {
+			toast.error(errorMessage(err));
+		} finally {
+			setBusy(false);
+		}
+	}
+
+	return (
+		<Dialog.Root
+			open={open}
+			onOpenChange={next => {
+				onOpenChange(next);
+				if (!next) {
+					setUrl('');
+					setEvents(['order.paid']);
+				}
+			}}
+		>
+			<Dialog.Portal>
+				<Dialog.Backdrop className="fixed inset-0 z-50 bg-black/40 transition-opacity duration-200 data-ending-style:opacity-0 data-starting-style:opacity-0 motion-reduce:transition-none" />
+				<Dialog.Popup className="fixed top-1/2 left-1/2 z-50 w-[calc(100%-2rem)] max-w-lg -translate-x-1/2 -translate-y-1/2 rounded-xl bg-popover p-5 text-popover-foreground shadow-lg ring-1 ring-foreground/10 transition-[opacity,scale] duration-200 outline-none data-ending-style:scale-95 data-ending-style:opacity-0 data-starting-style:scale-95 data-starting-style:opacity-0 motion-reduce:transition-none">
+					<form onSubmit={add} className="space-y-4">
+						<div className="space-y-1.5">
+							<Dialog.Title className="text-base font-semibold">Add endpoint</Dialog.Title>
+							<Dialog.Description className="text-sm text-muted-foreground">
+								Plantify will POST signed events to this URL.
+							</Dialog.Description>
+						</div>
+						<div className="space-y-1">
+							<Label htmlFor="hook-url">Endpoint URL</Label>
+							<Input
+								id="hook-url"
+								value={url}
+								onChange={e => setUrl(e.target.value)}
+								placeholder="https://webhook.site/your-id"
+								required
+								maxLength={500}
+								autoFocus
+							/>
+							<p className="text-xs text-muted-foreground">
+								Optional: the built-in endpoint already works. Your own URL must be HTTPS and public
+								(webhook.site gives you a free one). Up to 5 endpoints.
+							</p>
+						</div>
+						<EventPicker value={events} onChange={setEvents} idPrefix="new" />
+						<div className="flex justify-end gap-2">
+							<Dialog.Close render={<Button type="button" variant="outline" disabled={busy} />}>
+								Cancel
+							</Dialog.Close>
+							<Button
+								type="submit"
+								disabled={busy || atLimit || events.length === 0 || !url.trim()}
+								title={atLimit ? 'Delete an endpoint to add another' : undefined}
+							>
+								Create
+							</Button>
+						</div>
+					</form>
+				</Dialog.Popup>
+			</Dialog.Portal>
+		</Dialog.Root>
 	);
 }
 
@@ -512,12 +561,25 @@ export default function WebhooksPage() {
 	const { data: endpoints } = useApi<WebhookEndpointView[]>(
 		`/admin/webhooks/endpoints?list=${version}`,
 	);
+	const [adding, setAdding] = useState(false);
+	const atLimit = (endpoints?.filter(ep => ep.url !== WEBHOOK_ECHO_URL).length ?? 0) >= 5;
 
 	return (
 		<RequirePermission permission="webhooks:manage">
 			<PageHeader
 				title="Webhooks"
 				description="Send order and stock events to another system. Each request is signed so the receiver can verify it came from Plantify."
+				actions={
+					<Button onClick={() => setAdding(true)}>
+						<Plus /> Add endpoint
+					</Button>
+				}
+			/>
+			<AddEndpointDialog
+				open={adding}
+				onOpenChange={setAdding}
+				atLimit={atLimit}
+				onCreated={() => setVersion(v => v + 1)}
 			/>
 			<div className="space-y-10">
 				<Endpoints version={version} onChange={() => setVersion(v => v + 1)} />
