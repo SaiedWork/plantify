@@ -1,5 +1,6 @@
 'use client';
 
+import { ImagePicker, type PickerImage } from '@/components/image-picker';
 import { PageHeader, RequirePermission, TableShell, Td, Th } from '@/components/page-bits';
 import { Button, buttonVariants } from '@/components/ui/button';
 import { Checkbox } from '@/components/ui/checkbox';
@@ -11,15 +12,20 @@ import { api, errorMessage } from '@/lib/api-client';
 import { capitalize, dollarsToCents } from '@/lib/format';
 import { useApi } from '@/lib/use-api';
 import { cn } from '@/lib/utils';
-import type { AdminCategory, AdminProductDetail, ProductStatus } from '@plantify/contracts';
-import { PRODUCT_STATUSES } from '@plantify/contracts';
+import type { AdminCategory, ProductStatus } from '@plantify/contracts';
+import { MAX_IMAGES_PER_PRODUCT, PRODUCT_STATUSES } from '@plantify/contracts';
 import { Plus, Trash2 } from 'lucide-react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
-import { useState, type FormEvent } from 'react';
+import { useEffect, useRef, useState, type FormEvent } from 'react';
 import { toast } from 'sonner';
 
 type VariantRow = { label: string; price: string; threshold: string; stock: string };
+/** An image picked for the new product: either a local file (uploaded on Create) or an https URL. */
+type PendingImage = PickerImage & { file?: File; url?: string };
+
+const ACCEPTED_TYPES = ['image/jpeg', 'image/png', 'image/webp'];
+const MAX_UPLOAD_BYTES = 1024 * 1024;
 
 const newRow = (label = ''): VariantRow => ({ label, price: '', threshold: '5', stock: '0' });
 
@@ -33,6 +39,57 @@ export default function NewProductPage() {
 	const [status, setStatus] = useState<ProductStatus>('draft');
 	const [featured, setFeatured] = useState(false);
 	const [variants, setVariants] = useState<VariantRow[]>([newRow('Standard')]);
+	const [images, setImages] = useState<PendingImage[]>([]);
+
+	// Next keeps this page's state while another route (the new product's edit page) is shown, so the form
+	// would come back filled and stuck on "Creating…". Clear it, and free the previews, whenever the page is left.
+	const previews = useRef<string[]>([]);
+	useEffect(
+		() => () => {
+			previews.current.forEach(u => URL.revokeObjectURL(u));
+			previews.current = [];
+			setBusy(false);
+			setName('');
+			setDescription('');
+			setCategoryId('');
+			setStatus('draft');
+			setFeatured(false);
+			setVariants([newRow('Standard')]);
+			setImages([]);
+		},
+		[],
+	);
+
+	function addFile(file: File) {
+		if (!ACCEPTED_TYPES.includes(file.type)) {
+			toast.error('Use a JPEG, PNG or WebP image.');
+			return;
+		}
+		if (file.size > MAX_UPLOAD_BYTES) {
+			toast.error('Images can be up to 1 MB.');
+			return;
+		}
+		const src = URL.createObjectURL(file);
+		previews.current.push(src);
+		setImages(list => [...list, { id: crypto.randomUUID(), src, alt: file.name, file }]);
+	}
+
+	function addUrl(url: string) {
+		if (!/^https:\/\/[^\s]+$/.test(url)) {
+			toast.error('Enter an https:// image URL.');
+			return false;
+		}
+		setImages(list => [...list, { id: crypto.randomUUID(), src: url, alt: '', url }]);
+		return true;
+	}
+
+	const makeCover = (id: string) =>
+		setImages(list => {
+			const picked = list.find(i => i.id === id);
+			return picked ? [picked, ...list.filter(i => i.id !== id)] : list;
+		});
+
+	const removeImage = (id: string) => setImages(list => list.filter(i => i.id !== id));
 
 	const patchVariant = (i: number, patch: Partial<VariantRow>) =>
 		setVariants(vs => vs.map((v, j) => (j === i ? { ...v, ...patch } : v)));
@@ -60,7 +117,19 @@ export default function NewProductPage() {
 		}
 		setBusy(true);
 		try {
-			const created = await api<AdminProductDetail>('/admin/products', {
+			// Local files are uploaded now, in order, so the cover stays first.
+			const uploaded: { url: string; alt: string }[] = [];
+			for (const img of images) {
+				if (img.url) {
+					uploaded.push({ url: img.url, alt: name.trim() });
+					continue;
+				}
+				const body = new FormData();
+				body.append('file', img.file!);
+				const { url } = await api<{ url: string }>('/admin/uploads', { method: 'POST', body });
+				uploaded.push({ url, alt: name.trim() });
+			}
+			await api('/admin/products', {
 				method: 'POST',
 				json: {
 					name: name.trim(),
@@ -69,10 +138,11 @@ export default function NewProductPage() {
 					status,
 					featured,
 					variants: parsed,
+					images: uploaded,
 				},
 			});
 			toast.success('Product created');
-			router.push(`/products/${created.id}`);
+			router.push('/products');
 		} catch (err) {
 			toast.error(errorMessage(err));
 			setBusy(false);
@@ -81,8 +151,9 @@ export default function NewProductPage() {
 
 	return (
 		<RequirePermission permission="catalog:manage">
-			<PageHeader title="New product" description="Add images after saving." />
+			<PageHeader title="New product" description="Fill in the details, add images and variants, then create the product." />
 			<form onSubmit={onSubmit} className="space-y-6">
+				<div className="grid gap-6 xl:grid-cols-[minmax(0,1fr)_minmax(0,26rem)]">
 				<section className="@container space-y-4 rounded-xl border p-4">
 					<h2 className="font-semibold">Details</h2>
 					<div className="space-y-2">
@@ -137,6 +208,16 @@ export default function NewProductPage() {
 						</Label>
 					</div>
 				</section>
+				<ImagePicker
+					images={images}
+					max={MAX_IMAGES_PER_PRODUCT}
+					busy={busy}
+					onAddFile={addFile}
+					onAddUrl={addUrl}
+					onMakeCover={makeCover}
+					onRemove={removeImage}
+				/>
+				</div>
 
 				<section className="space-y-3">
 					<h2 className="font-semibold">Variants</h2>

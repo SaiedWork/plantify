@@ -26,6 +26,8 @@ const imageUrl = z
 
 // ---- products ----------------------------------------------------------------------------------
 
+export const MAX_IMAGES_PER_PRODUCT = 4;
+
 export const PRODUCT_STATUSES = ['draft', 'active', 'archived'] as const;
 export type ProductStatus = (typeof PRODUCT_STATUSES)[number];
 
@@ -65,6 +67,8 @@ export const createProductSchema = z.object({
   status: z.enum(PRODUCT_STATUSES).default('draft'),
   featured: z.boolean().default(false),
   variants: z.array(newVariantSchema).min(1).max(10),
+  /** Optional images, the first one is the cover. */
+  images: z.array(z.object({ url: imageUrl, alt: z.string().trim().max(160).default('') })).max(MAX_IMAGES_PER_PRODUCT).default([]),
 });
 export type CreateProductInput = z.infer<typeof createProductSchema>;
 
@@ -79,7 +83,6 @@ export const productPatchSchema = z
   .partial();
 
 export const addImageSchema = z.object({ url: imageUrl, alt: z.string().trim().max(160).default('') });
-export const MAX_IMAGES_PER_PRODUCT = 4;
 
 export type AdminProductListItem = {
   id: string;

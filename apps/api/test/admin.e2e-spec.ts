@@ -241,6 +241,26 @@ describe('Admin API (e2e)', () => {
       expect(removed.body.images).toHaveLength(3);
     });
 
+    it('creates a product with its images in one request', async () => {
+      const categories = await catalog.get('/api/admin/categories').expect(200);
+      const body = (images: unknown[]) => ({
+        name: `Imaged Fern ${crypto.randomUUID().slice(0, 6)}`,
+        categoryId: categories.body[0].id,
+        variants: [{ label: 'Standard', priceCents: 1000 }],
+        images,
+      });
+      const created = await catalog
+        .post('/api/admin/products')
+        .send(body([{ url: '/products/monstera-deliciosa.svg', alt: 'Cover' }, { url: 'https://example.com/fern.jpg' }]))
+        .expect(201);
+      expect(created.body.images.map((i: { url: string }) => i.url)).toEqual(['/products/monstera-deliciosa.svg', 'https://example.com/fern.jpg']);
+      expect(created.body.images[0]).toMatchObject({ alt: 'Cover', position: 0 });
+
+      const tooMany = Array.from({ length: 5 }, () => ({ url: '/products/aloe-vera.svg' }));
+      await catalog.post('/api/admin/products').send(body(tooMany)).expect(400);
+      await catalog.post('/api/admin/products').send(body([{ url: 'http://insecure.example.com/x.jpg' }])).expect(400);
+    });
+
     it('lists with search and status filters', async () => {
       const p = await newProduct(1, `Searchable Zebra ${crypto.randomUUID().slice(0, 4)}`);
       const found = await catalog.get('/api/admin/products?q=searchable%20zebra').expect(200);

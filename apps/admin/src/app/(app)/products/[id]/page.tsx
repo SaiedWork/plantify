@@ -9,6 +9,7 @@ import {
 	Td,
 	Th,
 } from '@/components/page-bits';
+import { ImagePicker } from '@/components/image-picker';
 import { Button } from '@/components/ui/button';
 import { Checkbox } from '@/components/ui/checkbox';
 import { ConfirmDialog } from '@/components/ui/confirm-dialog';
@@ -20,7 +21,6 @@ import { api, errorMessage } from '@/lib/api-client';
 import { centsToDollars, dollarsToCents, capitalize } from '@/lib/format';
 import { imageSrc } from '@/lib/images';
 import { useApi } from '@/lib/use-api';
-import { cn } from '@/lib/utils';
 import type {
 	AdminCategory,
 	AdminProductDetail,
@@ -28,11 +28,10 @@ import type {
 	ProductStatus,
 } from '@plantify/contracts';
 import { MAX_IMAGES_PER_PRODUCT, PRODUCT_STATUSES } from '@plantify/contracts';
-import { ImagePlus, Plus, Star, Trash2, X } from 'lucide-react';
-import Image from 'next/image';
+import { Plus, Trash2 } from 'lucide-react';
 import Link from 'next/link';
 import { useParams, useRouter } from 'next/navigation';
-import { Suspense, useRef, useState, type FormEvent } from 'react';
+import { Suspense, useState, type FormEvent } from 'react';
 import { toast } from 'sonner';
 
 /** Runs a mutation with a busy flag and toast feedback; returns whether it succeeded. */
@@ -417,10 +416,6 @@ function Variants({ product, reload }: { product: AdminProductDetail; reload: ()
 
 function Images({ product, reload }: { product: AdminProductDetail; reload: () => void }) {
 	const { busy, run } = useAction(reload);
-	const [url, setUrl] = useState('');
-	const [dragging, setDragging] = useState(false);
-	const fileInput = useRef<HTMLInputElement>(null);
-	const full = product.images.length >= MAX_IMAGES_PER_PRODUCT;
 
 	async function upload(file: File) {
 		const body = new FormData();
@@ -435,153 +430,20 @@ function Images({ product, reload }: { product: AdminProductDetail; reload: () =
 	}
 
 	return (
-		<section className="flex flex-col gap-4 rounded-xl border p-4">
-			<h2 className="font-semibold">
-				Images{' '}
-				<span className="text-sm font-normal text-muted-foreground">
-					({product.images.length}/{MAX_IMAGES_PER_PRODUCT}, first is the cover)
-				</span>
-			</h2>
-			{full ? (
-				<p className="rounded-lg border border-dashed p-6 text-center text-sm text-muted-foreground">
-					Image limit reached. Remove one to add another.
-				</p>
-			) : (
-				<div
-					role="button"
-					tabIndex={0}
-					aria-label="Upload an image: drop a file here or press Enter to browse"
-					aria-disabled={busy}
-					onClick={() => !busy && fileInput.current?.click()}
-					onKeyDown={e => {
-						if ((e.key === 'Enter' || e.key === ' ') && !busy) {
-							e.preventDefault();
-							fileInput.current?.click();
-						}
-					}}
-					onDragOver={e => {
-						e.preventDefault();
-						setDragging(true);
-					}}
-					onDragLeave={() => setDragging(false)}
-					onDrop={e => {
-						e.preventDefault();
-						setDragging(false);
-						const file = e.dataTransfer.files?.[0];
-						if (file && !busy) void upload(file);
-					}}
-					className={cn(
-						'flex min-h-32 cursor-pointer flex-col items-center justify-center gap-1 rounded-lg border-2 border-dashed p-4 text-center text-sm outline-none transition-colors hover:bg-muted/50 focus-visible:border-ring focus-visible:ring-3 focus-visible:ring-ring/50',
-						dragging && 'border-primary bg-muted/50',
-						busy && 'pointer-events-none opacity-50',
-					)}
-				>
-					<ImagePlus className="size-6 text-muted-foreground" />
-					<p className="font-medium">Drop an image here, or click to browse</p>
-					<p className="text-xs text-muted-foreground">JPEG, PNG or WebP, up to 1 MB</p>
-					<input
-						ref={fileInput}
-						type="file"
-						accept="image/jpeg,image/png,image/webp"
-						tabIndex={-1}
-						className="sr-only"
-						onClick={e => e.stopPropagation()}
-						onChange={e => {
-							const file = e.target.files?.[0];
-							e.target.value = '';
-							if (file) void upload(file);
-						}}
-					/>
-				</div>
-			)}
-			{product.images.length > 0 && (
-				<ul className="grid grid-cols-4 gap-2">
-					{product.images.map((img, i) => (
-						<li
-							key={img.id}
-							className="group relative aspect-square overflow-hidden rounded-lg bg-muted"
-						>
-							<Image
-								src={imageSrc(img.url)}
-								alt={img.alt}
-								fill
-								unoptimized
-								className="object-cover"
-							/>
-							{i === 0 ? (
-								<span className="absolute bottom-1 left-1 rounded-full border border-foreground/30 bg-background/90 px-1.5 py-0.5 text-[0.65rem] font-medium text-foreground">
-									Cover
-								</span>
-							) : (
-								<Button
-									size="icon-xs"
-									variant="secondary"
-									aria-label="Make cover image"
-									title="Make cover image"
-									disabled={busy}
-									className="absolute top-1 left-1"
-									onClick={() =>
-										run(
-											() => api(`/admin/images/${img.id}/primary`, { method: 'POST' }),
-											'Cover image updated',
-										)
-									}
-								>
-									<Star />
-								</Button>
-							)}
-							<Button
-								size="icon-xs"
-								variant="secondary"
-								aria-label="Remove image"
-								title="Remove image"
-								disabled={busy}
-								className="absolute top-1 right-1"
-								onClick={() =>
-									run(() => api(`/admin/images/${img.id}`, { method: 'DELETE' }), 'Image removed')
-								}
-							>
-								<X />
-							</Button>
-						</li>
-					))}
-				</ul>
-			)}
-			{!full && (
-				<form
-					className="mt-auto space-y-1.5"
-					onSubmit={async e => {
-						e.preventDefault();
-						if (
-							await run(
-								() =>
-									api(`/admin/products/${product.id}/images`, {
-										method: 'POST',
-										json: { url: url.trim(), alt: product.name },
-									}),
-								'Image added',
-							)
-						)
-							setUrl('');
-					}}
-				>
-					<Label htmlFor="imageUrl" className="text-xs">
-						…or add an https:// image URL
-					</Label>
-					<div className="flex gap-2">
-						<Input
-							id="imageUrl"
-							value={url}
-							onChange={e => setUrl(e.target.value)}
-							placeholder="https://…"
-						/>
-						<Button type="submit" disabled={busy || !url.trim()}>
-							Add
-						</Button>
-					</div>
-				</form>
-			)}
-		</section>
+		<ImagePicker
+			images={product.images.map(img => ({ id: img.id, src: imageSrc(img.url), alt: img.alt }))}
+			max={MAX_IMAGES_PER_PRODUCT}
+			busy={busy}
+			onAddFile={file => void upload(file)}
+			onAddUrl={url =>
+				run(
+					() => api(`/admin/products/${product.id}/images`, { method: 'POST', json: { url, alt: product.name } }),
+					'Image added',
+				)
+			}
+			onMakeCover={id => void run(() => api(`/admin/images/${id}/primary`, { method: 'POST' }), 'Cover image updated')}
+			onRemove={id => void run(() => api(`/admin/images/${id}`, { method: 'DELETE' }), 'Image removed')}
+		/>
 	);
 }
 
