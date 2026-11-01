@@ -54,7 +54,7 @@ export function SiteHeader() {
           {isPending ? (
             <span aria-hidden className="size-8 animate-pulse rounded-lg bg-muted" />
           ) : (
-            <UserMenu user={session ? { name: session.user.name, email: session.user.email } : null} />
+            <UserMenu user={session ? { id: session.user.id, name: session.user.name, email: session.user.email } : null} />
           )}
         </nav>
       </div>

@@ -3,9 +3,12 @@
 import { useState, type SubmitEvent } from "react";
 import type { AddressView } from "@plantify/contracts";
 import { MAX_SAVED_ADDRESSES } from "@plantify/contracts";
+import { MapPin } from "lucide-react";
 import { toast } from "sonner";
 import { AddressFields, EMPTY_ADDRESS, toAddressPayload, type AddressValues } from "@/components/address-fields";
 import { Button } from "@/components/ui/button";
+import { Checkbox } from "@/components/ui/checkbox";
+import { ConfirmDialog } from "@/components/ui/confirm-dialog";
 import { api, ApiError } from "@/lib/api-client";
 import { useApi } from "@/lib/use-api";
 
@@ -24,6 +27,7 @@ export default function AddressesPage() {
   const { data: addresses, loading, reload } = useApi<AddressView[]>("/addresses");
   const [editing, setEditing] = useState<Editing>(null);
   const [busy, setBusy] = useState(false);
+  const [deleting, setDeleting] = useState<AddressView | null>(null);
 
   async function run(action: () => Promise<unknown>, success: string) {
     setBusy(true);
@@ -55,7 +59,7 @@ export default function AddressesPage() {
   return (
     <div className="space-y-4">
       <div className="flex items-center justify-between">
-        <h2 className="text-2xl font-bold">Addresses</h2>
+        <h2 className="text-2xl font-bold tracking-tight">Addresses</h2>
         {!editing && (
           <Button disabled={atLimit} onClick={() => setEditing({ id: null, values: EMPTY_ADDRESS, makeDefault: false })}>
             Add address
@@ -64,15 +68,11 @@ export default function AddressesPage() {
       </div>
 
       {editing && (
-        <form onSubmit={onSave} className="space-y-4 rounded-xl border p-4">
+        <form onSubmit={onSave} className="space-y-4 rounded-xl border bg-card p-5">
           <h3 className="font-semibold">{editing.id ? "Edit address" : "New address"}</h3>
           <AddressFields value={editing.values} onChange={(values) => setEditing({ ...editing, values })} idPrefix="saved" />
-          <label className="flex items-center gap-2 text-sm">
-            <input
-              type="checkbox"
-              checked={editing.makeDefault}
-              onChange={(e) => setEditing({ ...editing, makeDefault: e.target.checked })}
-            />
+          <label className="flex w-fit items-center gap-2 text-sm">
+            <Checkbox checked={editing.makeDefault} onCheckedChange={(checked) => setEditing({ ...editing, makeDefault: checked === true })} />
             Use as my default address
           </label>
           <div className="flex gap-2">
@@ -89,14 +89,19 @@ export default function AddressesPage() {
       {loading ? (
         <div className="h-32 animate-pulse rounded-xl bg-muted" />
       ) : !addresses || addresses.length === 0 ? (
-        !editing && <p className="rounded-xl border border-dashed p-8 text-center text-sm text-muted-foreground">No saved addresses yet.</p>
+        !editing && (
+          <div className="flex flex-col items-center gap-2 rounded-xl border border-dashed p-10 text-center text-sm text-muted-foreground">
+            <MapPin aria-hidden className="size-8" />
+            <p>No saved addresses yet.</p>
+          </div>
+        )
       ) : (
         <ul className="grid gap-3 sm:grid-cols-2">
           {addresses.map((a) => (
-            <li key={a.id} className="rounded-xl border p-4 text-sm">
+            <li key={a.id} className="rounded-xl border bg-card p-5 text-sm">
               <div className="mb-1 flex items-center gap-2">
                 <p className="font-medium">{a.fullName}</p>
-                {a.isDefault && <span className="rounded-full bg-green-100 px-2 py-0.5 text-xs text-green-900">Default</span>}
+                {a.isDefault && <span className="rounded-full bg-green-100 px-2 py-0.5 text-xs text-green-900 dark:bg-green-950 dark:text-green-200">Default</span>}
               </div>
               <p>{a.line1}</p>
               {a.line2 && <p>{a.line2}</p>}
@@ -122,11 +127,7 @@ export default function AddressesPage() {
                   variant="ghost"
                   size="sm"
                   disabled={busy}
-                  onClick={() => {
-                    if (window.confirm("Delete this address?")) {
-                      void run(() => api(`/addresses/${a.id}`, { method: "DELETE" }), "Address deleted");
-                    }
-                  }}
+                  onClick={() => setDeleting(a)}
                 >
                   Delete
                 </Button>
@@ -135,6 +136,20 @@ export default function AddressesPage() {
           ))}
         </ul>
       )}
+      <ConfirmDialog
+        open={deleting !== null}
+        onOpenChange={(open) => !open && setDeleting(null)}
+        title="Delete this address?"
+        description={deleting ? `${deleting.fullName}, ${deleting.line1}, ${deleting.city} will be removed from your saved addresses.` : ""}
+        confirmLabel="Delete"
+        destructive
+        busy={busy}
+        onConfirm={async () => {
+          if (!deleting) return;
+          await run(() => api(`/addresses/${deleting.id}`, { method: "DELETE" }), "Address deleted");
+          setDeleting(null);
+        }}
+      />
       {atLimit && <p className="text-xs text-muted-foreground">You&apos;ve reached the limit of {MAX_SAVED_ADDRESSES} saved addresses.</p>}
     </div>
   );
