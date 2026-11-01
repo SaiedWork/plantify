@@ -1,17 +1,49 @@
 "use client";
 
-import { Leaf } from "lucide-react";
 import { useRouter } from "next/navigation";
-import { useState } from "react";
+import { useEffect, useState, type FormEvent } from "react";
 import { STAFF_ROLES } from "@plantify/contracts";
 import { toast } from "sonner";
-import { Button } from "@/components/ui/button";
+import { PlantifyLogo } from "@/components/plantify-logo";
+import { ThemeToggle } from "@/components/theme-toggle";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import {
+  Questionnaire,
+  QuestionnaireActions,
+  QuestionnaireChoice,
+  QuestionnaireChoiceDescription,
+  QuestionnaireChoices,
+  QuestionnaireDescription,
+  QuestionnaireError,
+  QuestionnaireItem,
+  QuestionnaireSubmit,
+  QuestionnaireTitle,
+} from "@/components/ui/questionnaire";
 import { authClient, DEMO_ACCOUNTS, DEMO_PASSWORD } from "@/lib/auth-client";
+
+const ROLE_QUESTION = [
+  {
+    name: "role",
+    required: true,
+    title: "Choose a role",
+    description: "Pick the demo account to sign in as.",
+    choices: DEMO_ACCOUNTS.map((a) => ({ value: a.email, label: a.label, description: a.blurb })),
+  },
+] as const;
 
 export default function LoginPage() {
   const router = useRouter();
   const [busy, setBusy] = useState(false);
+  // Next keeps this page's state while the dashboard is shown, so a later visit would come back with the old
+  // selection and error. Remounting the form (new key) whenever the page is left gives a fresh one.
+  const [formKey, setFormKey] = useState(0);
+  useEffect(
+    () => () => {
+      setBusy(false);
+      setFormKey((k) => k + 1);
+    },
+    [],
+  );
 
   async function signIn(email: string, password: string) {
     setBusy(true);
@@ -37,32 +69,47 @@ export default function LoginPage() {
     }
   }
 
+  function onSubmit(event: FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+    const email = new FormData(event.currentTarget).get("role");
+    if (typeof email === "string" && !busy) void signIn(email, DEMO_PASSWORD);
+  }
+
   return (
-    <div className="mx-auto flex min-h-[calc(100vh-1.75rem)] max-w-md flex-col items-center justify-center gap-4 px-4">
-      <div className="flex items-center gap-2 text-base font-semibold text-green-800 dark:text-green-400">
-        <Leaf className="size-5" /> Plantify
+    <div className="mx-auto flex min-h-[calc(100vh-1.75rem)] max-w-md flex-col items-center justify-center gap-6 px-4">
+      {/* Same spot as in the admin header (below the demo banner, at its right edge), without the header. */}
+      <div className="fixed top-10 right-4 md:right-8">
+        <ThemeToggle />
       </div>
+      <PlantifyLogo size="lg" />
       <Card className="w-full">
         <CardHeader>
           <CardTitle role="heading" aria-level={1}>Admin sign in</CardTitle>
           <CardDescription>Internal back office. This is a demo with fake data.</CardDescription>
         </CardHeader>
         <CardContent>
-          <div className="space-y-2">
-            <p className="text-sm font-medium">Demo login</p>
-            {DEMO_ACCOUNTS.map((a) => (
-              <Button
-                key={a.email}
-                variant="outline"
-                className="h-auto w-full flex-col items-start py-2"
-                disabled={busy}
-                onClick={() => signIn(a.email, DEMO_PASSWORD)}
-              >
-                <span>Sign in as {a.label}</span>
-                <span className="text-xs font-normal text-muted-foreground">{a.blurb}</span>
-              </Button>
-            ))}
-          </div>
+          <Questionnaire key={formKey} defaultItem="role" items={ROLE_QUESTION} onSubmit={onSubmit}>
+            <QuestionnaireItem name="role" required>
+              <div className="space-y-1">
+                <QuestionnaireTitle>{ROLE_QUESTION[0].title}</QuestionnaireTitle>
+                <QuestionnaireDescription>{ROLE_QUESTION[0].description}</QuestionnaireDescription>
+              </div>
+              <QuestionnaireChoices>
+                {ROLE_QUESTION[0].choices.map((choice) => (
+                  <QuestionnaireChoice key={choice.value} value={choice.value}>
+                    <span className="font-medium">{choice.label}</span>
+                    <QuestionnaireChoiceDescription>{choice.description}</QuestionnaireChoiceDescription>
+                  </QuestionnaireChoice>
+                ))}
+              </QuestionnaireChoices>
+              <QuestionnaireError />
+            </QuestionnaireItem>
+            <QuestionnaireActions>
+              <QuestionnaireSubmit className="col-span-3 col-start-1 h-9 w-full justify-self-stretch" disabled={busy}>
+                {busy ? "Signing in…" : "Sign in"}
+              </QuestionnaireSubmit>
+            </QuestionnaireActions>
+          </Questionnaire>
         </CardContent>
       </Card>
     </div>
