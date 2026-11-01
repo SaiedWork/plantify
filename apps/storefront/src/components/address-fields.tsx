@@ -1,5 +1,6 @@
 "use client";
 
+import type { ReactNode } from "react";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { cn } from "@/lib/utils";
@@ -42,6 +43,7 @@ export function AddressFields({
   idPrefix = "addr",
   errors,
   onFieldBlur,
+  zipAside,
 }: {
   value: AddressValues;
   onChange: (next: AddressValues) => void;
@@ -50,6 +52,8 @@ export function AddressFields({
   /** Messages to show per field; omit to rely on the browser's own `required` validation. */
   errors?: Partial<Record<keyof AddressValues, string>>;
   onFieldBlur?: (key: keyof AddressValues) => void;
+  /** Sits to the right of the ZIP code field (below it on narrow screens), e.g. a "save this address" checkbox. */
+  zipAside?: ReactNode;
 }) {
   return (
     <div className="grid gap-4 sm:grid-cols-2">
@@ -71,6 +75,7 @@ export function AddressFields({
           <FieldError id={`${idPrefix}-${f.key}-error`} message={errors?.[f.key]} />
         </div>
       ))}
+      {zipAside && <div className="flex min-h-9 items-center text-sm sm:self-end">{zipAside}</div>}
     </div>
   );
 }
