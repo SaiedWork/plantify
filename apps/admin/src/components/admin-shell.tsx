@@ -46,8 +46,8 @@ const NAV: {
 	{ href: '/inventory', label: 'Inventory', icon: Boxes, permission: 'inventory:manage' },
 	{ href: '/orders', label: 'Orders', icon: ShoppingBag, permission: 'orders:view' },
 	{ href: '/customers', label: 'Customers', icon: Users, permission: 'customers:view' },
-	{ href: '/webhooks', label: 'Webhooks', icon: Webhook, permission: 'webhooks:manage' },
 	{ href: '/staff', label: 'Staff & roles', icon: ShieldCheck, permission: 'staff:manage' },
+	{ href: '/webhooks', label: 'Webhooks', icon: Webhook, permission: 'webhooks:manage' },
 	{ href: '/audit', label: 'Audit log', icon: History, permission: 'staff:manage' },
 ];
 

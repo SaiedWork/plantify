@@ -5,6 +5,7 @@ import { useBreadcrumbLabel } from '@/components/app-header';
 import { Badge, OrderBadge, PageHeader, RequirePermission, Skeleton } from '@/components/page-bits';
 import { Button } from '@/components/ui/button';
 import { Checkbox } from '@/components/ui/checkbox';
+import { ConfirmDialog } from '@/components/ui/confirm-dialog';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { api, errorMessage } from '@/lib/api-client';
@@ -33,6 +34,7 @@ function OrderView() {
 	const [busy, setBusy] = useState(false);
 	const [restock, setRestock] = useState(true);
 	const [reason, setReason] = useState('');
+	const [confirming, setConfirming] = useState<'refund' | 'cancel' | null>(null);
 	useBreadcrumbLabel(order?.number);
 
 	async function act(action: () => Promise<unknown>, success: string) {
@@ -205,19 +207,7 @@ function OrderView() {
 						<Button
 							variant="outline"
 							disabled={busy}
-							onClick={() =>
-								window.confirm(
-									`Refund ${formatPrice(order.totalCents)} to ${order.customer.name}?`,
-								) &&
-								void act(
-									() =>
-										api(`/admin/orders/${id}/refund`, {
-											method: 'POST',
-											json: { restock, ...(reason.trim() ? { reason: reason.trim() } : {}) },
-										}),
-									'Order refunded',
-								)
-							}
+							onClick={() => setConfirming('refund')}
 						>
 							Refund {formatPrice(order.totalCents)}
 						</Button>
@@ -242,17 +232,7 @@ function OrderView() {
 				{order.status === 'pending_payment' && can('orders:fulfil') && (
 					<Button
 						disabled={busy}
-						onClick={() =>
-							window.confirm('Cancel this unpaid order?') &&
-							void act(
-								() =>
-									api(`/admin/orders/${id}/status`, {
-										method: 'POST',
-										json: { status: 'cancelled' },
-									}),
-								'Order cancelled',
-							)
-						}
+						onClick={() => setConfirming('cancel')}
 					>
 						Cancel order
 					</Button>
@@ -261,6 +241,45 @@ function OrderView() {
 					<p className="text-sm text-muted-foreground">You can view orders but not change them.</p>
 				)}
 			</div>
+
+			<ConfirmDialog
+				open={confirming === 'refund'}
+				onOpenChange={open => !open && setConfirming(null)}
+				title={`Refund ${formatPrice(order.totalCents)}?`}
+				description={`The full amount goes back to ${order.customer.name} (simulated).${restock ? ' The items are put back in stock.' : ''}`}
+				confirmLabel={`Refund ${formatPrice(order.totalCents)}`}
+				destructive
+				busy={busy}
+				onConfirm={async () => {
+					await act(
+						() =>
+							api(`/admin/orders/${id}/refund`, {
+								method: 'POST',
+								json: { restock, ...(reason.trim() ? { reason: reason.trim() } : {}) },
+							}),
+						'Order refunded',
+					);
+					setConfirming(null);
+				}}
+			/>
+			<ConfirmDialog
+				open={confirming === 'cancel'}
+				onOpenChange={open => !open && setConfirming(null)}
+				title="Cancel this unpaid order?"
+				description="The order is marked as cancelled and can no longer be paid."
+				confirmLabel="Cancel order"
+				cancelLabel="Keep order"
+				destructive
+				busy={busy}
+				onConfirm={async () => {
+					await act(
+						() =>
+							api(`/admin/orders/${id}/status`, { method: 'POST', json: { status: 'cancelled' } }),
+						'Order cancelled',
+					);
+					setConfirming(null);
+				}}
+			/>
 		</div>
 	);
 }

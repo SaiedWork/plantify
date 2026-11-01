@@ -11,7 +11,7 @@ import { SearchInput } from "@/components/ui/search-input";
 import { Select } from "@/components/ui/select";
 import { EmptyState, ErrorState, PageHeader, Pager, TableToolbar, ProductBadge, RequirePermission, Skeleton, TableShell, Td, Th } from "@/components/page-bits";
 import { qs } from "@/lib/api-client";
-import { formatPrice } from "@/lib/format";
+import { formatPrice, capitalize } from "@/lib/format";
 import { imageSrc } from "@/lib/images";
 import { useApi, useDebounced } from "@/lib/use-api";
 import { cn } from "@/lib/utils";
@@ -51,7 +51,7 @@ export default function ProductsPage() {
             setStatus(v as ProductStatus | "");
             setPage(1);
           }}
-          options={[{ value: "", label: "All statuses" }, ...PRODUCT_STATUSES.map((s) => ({ value: s, label: s }))]}
+          options={[{ value: "", label: "All statuses" }, ...PRODUCT_STATUSES.map((s) => ({ value: s, label: capitalize(s) }))]}
           aria-label="Filter by status"
         />
       </TableToolbar>
