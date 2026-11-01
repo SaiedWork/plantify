@@ -26,16 +26,30 @@ const FIELDS: FieldDef[] = [
   { key: "postalCode", label: "ZIP code", required: true, autoComplete: "postal-code" },
 ];
 
+/** Inline error text under a field; pair it with `aria-invalid` and `aria-describedby` on the input. */
+export function FieldError({ id, message }: { id: string; message?: string }) {
+  return message ? (
+    <p id={id} className="text-xs text-destructive">
+      {message}
+    </p>
+  ) : null;
+}
+
 export function AddressFields({
   value,
   onChange,
   disabled,
   idPrefix = "addr",
+  errors,
+  onFieldBlur,
 }: {
   value: AddressValues;
   onChange: (next: AddressValues) => void;
   disabled?: boolean;
   idPrefix?: string;
+  /** Messages to show per field; omit to rely on the browser's own `required` validation. */
+  errors?: Partial<Record<keyof AddressValues, string>>;
+  onFieldBlur?: (key: keyof AddressValues) => void;
 }) {
   return (
     <div className="grid gap-4 sm:grid-cols-2">
@@ -46,11 +60,15 @@ export function AddressFields({
             id={`${idPrefix}-${f.key}`}
             value={value[f.key]}
             onChange={(e) => onChange({ ...value, [f.key]: e.target.value })}
+            onBlur={() => onFieldBlur?.(f.key)}
+            aria-invalid={errors?.[f.key] ? true : undefined}
+            aria-describedby={errors?.[f.key] ? `${idPrefix}-${f.key}-error` : undefined}
             required={f.required}
             disabled={disabled}
             maxLength={120}
             autoComplete={f.autoComplete}
           />
+          <FieldError id={`${idPrefix}-${f.key}-error`} message={errors?.[f.key]} />
         </div>
       ))}
     </div>

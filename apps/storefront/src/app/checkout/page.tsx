@@ -1,23 +1,31 @@
 "use client";
 
+import Image from "next/image";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { useState, type SubmitEvent } from "react";
+import { useState, useSyncExternalStore, type SubmitEvent } from "react";
 import type { AddressView, PayResult } from "@plantify/contracts";
-import { toast } from "sonner";
+import { ArrowLeft, CircleAlert, Loader2, Lock, ShoppingCart } from "lucide-react";
 import { Button, buttonVariants } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import { Checkbox } from "@/components/ui/checkbox";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { AddressFields, EMPTY_ADDRESS, toAddressPayload, type AddressValues } from "@/components/address-fields";
+import { AddressFields, EMPTY_ADDRESS, FieldError, toAddressPayload, type AddressValues } from "@/components/address-fields";
 import { useCart } from "@/components/cart-provider";
 import { OrderTotals } from "@/components/order-totals";
+import { ThreeDSDialog } from "@/components/three-ds-dialog";
 import { api, ApiError } from "@/lib/api-client";
 import { formatPrice } from "@/lib/format";
 import { cn } from "@/lib/utils";
 import { useApi } from "@/lib/use-api";
 
-const DEMO_CARD = { number: "1234 5678 9", cvc: "123" };
+const DEMO_CARDS = [
+  { number: "1234 5678 9", label: "Pays successfully" },
+  { number: "0000 0000 0", label: "Is declined" },
+  { number: "1111 1111 1", label: "Asks for a fake 3-D Secure approval" },
+];
+const DEMO_CVC = "123";
 const FAILURE_MESSAGES: Record<string, string> = {
   card_declined: "Your card was declined. Try another card, such as the success demo card.",
   out_of_stock: "Sorry, someone bought the last one while you were paying. Nothing was charged.",
@@ -33,6 +41,63 @@ const toValues = (a: AddressView): AddressValues => ({
 });
 
 type Step = { orderId: string | null; threeDS: { paymentId: string; orderId: string } | null };
+type CardValues = { number: string; expMonth: string; expYear: string; cvc: string; name: string };
+type Errors = Record<string, string | undefined>;
+
+/** Groups the digits of a card number in fours as the shopper types. */
+const formatCardNumber = (v: string) => v.replace(/\D/g, "").slice(0, 19).replace(/(.{4})(?=.)/g, "$1 ");
+
+function validateAddress(a: AddressValues): Errors {
+  return {
+    fullName: a.fullName.trim() ? undefined : "Enter your full name",
+    line1: a.line1.trim() ? undefined : "Enter your street address",
+    city: a.city.trim() ? undefined : "Enter your city",
+    postalCode: a.postalCode.trim() ? undefined : "Enter your ZIP code",
+  };
+}
+
+/** `thisMonth` (year * 12 + month index) is null while the page is prerendered, when the current date is not available. */
+function validateCard(c: CardValues, thisMonth: number | null): Errors {
+  const digits = c.number.replace(/\D/g, "");
+  const month = Number(c.expMonth);
+  const year = Number(c.expYear);
+  const expired = thisMonth !== null && year * 12 + (month - 1) < thisMonth;
+  return {
+    name: c.name.trim() ? undefined : "Enter the name on the card",
+    number: digits.length >= 9 ? undefined : "Enter a card number, or use one of the demo cards",
+    expMonth: month >= 1 && month <= 12 ? undefined : "Use 1 to 12",
+    expYear: !/^\d{4}$/.test(c.expYear) ? "Use 4 digits" : expired ? "This card has expired" : undefined,
+    cvc: /^\d{3,4}$/.test(c.cvc) ? undefined : "Use 3 or 4 digits",
+  };
+}
+
+const hasErrors = (e: Errors) => Object.values(e).some(Boolean);
+
+function SectionTitle({ n, title }: { n: number; title: string }) {
+  return (
+    <CardTitle className="flex items-center gap-2.5 text-base">
+      <span aria-hidden className="flex size-6 items-center justify-center rounded-full bg-green-700 text-xs font-semibold text-white dark:bg-green-600">
+        {n}
+      </span>
+      {title}
+    </CardTitle>
+  );
+}
+
+function CheckoutSkeleton() {
+  return (
+    <div aria-hidden className="mx-auto max-w-5xl px-4 py-8">
+      <div className="mb-6 h-8 w-40 animate-pulse rounded bg-muted" />
+      <div className="grid gap-8 md:grid-cols-[1fr_340px]">
+        <div className="space-y-6">
+          <div className="h-80 animate-pulse rounded-xl bg-muted" />
+          <div className="h-96 animate-pulse rounded-xl bg-muted" />
+        </div>
+        <div className="h-72 animate-pulse rounded-xl bg-muted" />
+      </div>
+    </div>
+  );
+}
 
 export default function CheckoutPage() {
   const router = useRouter();
@@ -44,11 +109,44 @@ export default function CheckoutPage() {
   const [saveAddress, setSaveAddress] = useState(false);
   const defaultSaved = saved?.find((a) => a.isDefault) ?? saved?.[0];
   const addressValue: AddressValues = address ?? (defaultSaved ? toValues(defaultSaved) : EMPTY_ADDRESS);
-  const [card, setCard] = useState({ number: "", expMonth: "", expYear: "", cvc: "", name: "" });
+  const [card, setCard] = useState<CardValues>({ number: "", expMonth: "", expYear: "", cvc: "", name: "" });
+  const [payError, setPayError] = useState<string | null>(null);
+  // Errors only show for fields the shopper has left, or for every field once they try to pay.
+  const [touched, setTouched] = useState<Record<string, boolean>>({});
+  const [submitted, setSubmitted] = useState(false);
+  const thisMonth = useSyncExternalStore(
+    () => () => {},
+    () => {
+      const d = new Date();
+      return d.getFullYear() * 12 + d.getMonth();
+    },
+    () => null,
+  );
 
-  function autofill() {
+  const addressErrors = validateAddress(addressValue);
+  const cardErrors = validateCard(card, thisMonth);
+  const addressShown = Object.fromEntries(
+    Object.entries(addressErrors).map(([k, v]) => [k, submitted || touched[`ship-${k}`] ? v : undefined]),
+  );
+  const shown = (key: string, errors: Errors) => (submitted || touched[key] ? errors[key] : undefined);
+  const touch = (key: string) => setTouched((t) => ({ ...t, [key]: true }));
+  const cardField = (key: keyof CardValues) => ({
+    id: key,
+    value: card[key],
+    onBlur: () => touch(key),
+    "aria-invalid": shown(key, cardErrors) ? true : undefined,
+    "aria-describedby": shown(key, cardErrors) ? `${key}-error` : undefined,
+  });
+
+  function fillDemoCard(number: string) {
     const year = new Date().getFullYear();
-    setCard({ number: DEMO_CARD.number, expMonth: "12", expYear: String(year + 2), cvc: DEMO_CARD.cvc, name: "Demo Shopper" });
+    setCard((c) => ({
+      number,
+      expMonth: c.expMonth || "12",
+      expYear: c.expYear || String(year + 2),
+      cvc: c.cvc || DEMO_CVC,
+      name: c.name || "Demo Shopper",
+    }));
   }
 
   function handleResult(result: PayResult) {
@@ -58,13 +156,20 @@ export default function CheckoutPage() {
     } else if (result.status === "requires_action") {
       setStep({ orderId: result.orderId, threeDS: { paymentId: result.paymentId, orderId: result.orderId } });
     } else {
-      toast.error(FAILURE_MESSAGES[result.reason] ?? "Payment failed. Please try again.");
+      setPayError(FAILURE_MESSAGES[result.reason] ?? "Payment failed. Please try again.");
       if (result.reason === "out_of_stock") void refresh();
     }
   }
 
   async function onSubmit(e: SubmitEvent<HTMLFormElement>) {
     e.preventDefault();
+    setSubmitted(true);
+    setPayError(null);
+    if (hasErrors(addressErrors) || hasErrors(cardErrors)) {
+      // Move focus to the first field with a problem so the shopper does not have to hunt for it.
+      requestAnimationFrame(() => document.querySelector<HTMLElement>("[aria-invalid=true]")?.focus());
+      return;
+    }
     setBusy(true);
     try {
       // The order is created once; a declined card can be retried against the same order.
@@ -85,7 +190,7 @@ export default function CheckoutPage() {
         }),
       );
     } catch (err) {
-      toast.error(err instanceof ApiError ? err.message : "Checkout failed");
+      setPayError(err instanceof ApiError ? err.message : "Checkout failed. Please try again.");
       if (err instanceof ApiError && err.status === 409) void refresh();
     } finally {
       setBusy(false);
@@ -100,35 +205,52 @@ export default function CheckoutPage() {
       setStep((s) => ({ ...s, threeDS: null }));
       handleResult(result);
     } catch (err) {
-      toast.error(err instanceof ApiError ? err.message : "Confirmation failed");
+      setPayError(err instanceof ApiError ? err.message : "Confirmation failed. Please try again.");
+      setStep((s) => ({ ...s, threeDS: null }));
     } finally {
       setBusy(false);
     }
   }
 
-  if (!cart) return <div className="mx-auto h-64 max-w-5xl animate-pulse px-4 py-10" />;
+  if (!cart) return <CheckoutSkeleton />;
   if (cart.lines.length === 0 && !step.orderId) {
     return (
-      <div className="mx-auto max-w-5xl px-4 py-16 text-center">
-        <h1 className="text-2xl font-bold">Nothing to check out</h1>
-        <Link href="/shop" className={cn(buttonVariants(), "mt-6")}>
-          Browse plants
-        </Link>
+      <div className="mx-auto max-w-5xl px-4 py-16">
+        <div className="mx-auto max-w-md rounded-2xl border border-dashed p-10 text-center">
+          <span aria-hidden className="mx-auto flex size-12 items-center justify-center rounded-full bg-muted text-muted-foreground">
+            <ShoppingCart className="size-6" />
+          </span>
+          <h1 className="mt-4 text-2xl font-bold tracking-tight">Nothing to check out</h1>
+          <p className="mt-2 text-muted-foreground">Add a plant to your cart first.</p>
+          <Link href="/shop" className={cn(buttonVariants({ size: "lg" }), "mt-6")}>
+            Browse plants
+          </Link>
+        </div>
       </div>
     );
   }
 
   const locked = step.orderId !== null;
+  const showErr = (key: string) => shown(key, cardErrors);
 
   return (
     <div className="mx-auto max-w-5xl px-4 py-8">
-      <h1 className="mb-6 text-2xl font-bold">Checkout</h1>
-      <form onSubmit={onSubmit} className="grid gap-8 md:grid-cols-[1fr_320px]">
+      <div className="mb-6 flex items-end justify-between gap-4">
+        <h1 className="text-2xl font-bold tracking-tight">Checkout</h1>
+        {!locked && (
+          <Link href="/cart" className="flex items-center gap-1 text-sm text-muted-foreground hover:text-foreground hover:underline">
+            <ArrowLeft aria-hidden className="size-4" /> Back to cart
+          </Link>
+        )}
+      </div>
+      <form onSubmit={onSubmit} noValidate className="grid items-start gap-8 md:grid-cols-[1fr_340px]">
         <div className="space-y-6">
           <Card>
             <CardHeader>
-              <CardTitle>Shipping address</CardTitle>
-              <CardDescription>Fake addresses are fine. Nothing will be shipped.</CardDescription>
+              <SectionTitle n={1} title="Shipping address" />
+              <CardDescription>
+                {locked ? "Your order is created, so the address is locked. Just finish paying." : "Fake addresses are fine. Nothing will be shipped."}
+              </CardDescription>
             </CardHeader>
             <CardContent className="space-y-4">
               {saved && saved.length > 0 && (
@@ -142,7 +264,7 @@ export default function CheckoutPage() {
                       const chosen = saved.find((a) => a.id === e.target.value);
                       setAddress(chosen ? toValues(chosen) : EMPTY_ADDRESS);
                     }}
-                    className="h-9 w-full rounded-lg border bg-background px-2 text-sm"
+                    className="h-8 w-full rounded-lg border bg-background px-2 text-sm outline-none focus-visible:border-ring focus-visible:ring-3 focus-visible:ring-ring/50 disabled:opacity-50 dark:bg-input/30"
                   >
                     <option value="">Enter a new address</option>
                     {saved.map((a) => (
@@ -153,10 +275,17 @@ export default function CheckoutPage() {
                   </select>
                 </div>
               )}
-              <AddressFields value={addressValue} onChange={setAddress} disabled={locked} idPrefix="ship" />
+              <AddressFields
+                value={addressValue}
+                onChange={setAddress}
+                disabled={locked}
+                idPrefix="ship"
+                errors={addressShown}
+                onFieldBlur={(key) => touch(`ship-${key}`)}
+              />
               {!locked && (
-                <label className="flex items-center gap-2 text-sm">
-                  <input type="checkbox" checked={saveAddress} onChange={(e) => setSaveAddress(e.target.checked)} />
+                <label className="flex w-fit items-center gap-2 text-sm">
+                  <Checkbox checked={saveAddress} onCheckedChange={(checked) => setSaveAddress(checked === true)} />
                   Save this address to my account
                 </label>
               )}
@@ -165,94 +294,113 @@ export default function CheckoutPage() {
 
           <Card>
             <CardHeader>
-              <CardTitle>Payment</CardTitle>
+              <SectionTitle n={2} title="Payment" />
               <CardDescription>This is a simulated payment. No real card is charged or stored.</CardDescription>
             </CardHeader>
             <CardContent className="space-y-4">
-              <div className="rounded-lg border border-amber-300 bg-amber-50 p-3 text-sm text-amber-900">
-                <p className="font-medium">Demo cards (CVC {DEMO_CARD.cvc}, any future expiry)</p>
-                <ul className="mt-1 list-disc pl-5">
-                  <li>
-                    <code>1234 5678 9</code> pays successfully
-                  </li>
-                  <li>
-                    <code>0000 0000 0</code> is declined
-                  </li>
-                  <li>
-                    <code>1111 1111 1</code> asks for a fake 3-D Secure approval
-                  </li>
+              <div className="rounded-lg border border-amber-300 bg-amber-50 p-3 text-sm text-amber-900 dark:border-amber-800 dark:bg-amber-950 dark:text-amber-200">
+                <p className="font-medium">Demo cards (CVC {DEMO_CVC}, any future expiry)</p>
+                <ul className="mt-2 space-y-1.5">
+                  {DEMO_CARDS.map((c) => (
+                    <li key={c.number} className="flex items-center justify-between gap-2">
+                      <span>
+                        <code className="font-semibold">{c.number}</code> <span className="text-xs">{c.label.toLowerCase()}</span>
+                      </span>
+                      <Button type="button" variant="outline" size="xs" onClick={() => fillDemoCard(c.number)}>
+                        Use
+                      </Button>
+                    </li>
+                  ))}
                 </ul>
-                <Button type="button" variant="outline" size="sm" className="mt-2" onClick={autofill}>
-                  Autofill demo card
-                </Button>
               </div>
               <div className="grid gap-4 sm:grid-cols-2">
                 <div className="space-y-2 sm:col-span-2">
-                  <Label htmlFor="cardName">Name on card</Label>
-                  <Input id="cardName" required maxLength={80} value={card.name} onChange={(e) => setCard({ ...card, name: e.target.value })} autoComplete="cc-name" />
+                  <Label htmlFor="name">Name on card</Label>
+                  <Input {...cardField("name")} maxLength={80} onChange={(e) => setCard({ ...card, name: e.target.value })} autoComplete="cc-name" />
+                  <FieldError id="name-error" message={showErr("name")} />
                 </div>
                 <div className="space-y-2 sm:col-span-2">
-                  <Label htmlFor="cardNumber">Card number</Label>
-                  <Input id="cardNumber" required inputMode="numeric" maxLength={30} value={card.number} onChange={(e) => setCard({ ...card, number: e.target.value })} autoComplete="cc-number" />
+                  <Label htmlFor="number">Card number</Label>
+                  <Input
+                    {...cardField("number")}
+                    inputMode="numeric"
+                    placeholder="1234 5678 9"
+                    maxLength={23}
+                    onChange={(e) => setCard({ ...card, number: formatCardNumber(e.target.value) })}
+                    autoComplete="cc-number"
+                  />
+                  <FieldError id="number-error" message={showErr("number")} />
                 </div>
                 <div className="grid grid-cols-2 gap-2">
                   <div className="space-y-2">
                     <Label htmlFor="expMonth">Month</Label>
-                    <Input id="expMonth" required inputMode="numeric" placeholder="MM" maxLength={2} value={card.expMonth} onChange={(e) => setCard({ ...card, expMonth: e.target.value })} autoComplete="cc-exp-month" />
+                    <Input {...cardField("expMonth")} inputMode="numeric" placeholder="MM" maxLength={2} onChange={(e) => setCard({ ...card, expMonth: e.target.value.replace(/\D/g, "") })} autoComplete="cc-exp-month" />
+                    <FieldError id="expMonth-error" message={showErr("expMonth")} />
                   </div>
                   <div className="space-y-2">
                     <Label htmlFor="expYear">Year</Label>
-                    <Input id="expYear" required inputMode="numeric" placeholder="YYYY" maxLength={4} value={card.expYear} onChange={(e) => setCard({ ...card, expYear: e.target.value })} autoComplete="cc-exp-year" />
+                    <Input {...cardField("expYear")} inputMode="numeric" placeholder="YYYY" maxLength={4} onChange={(e) => setCard({ ...card, expYear: e.target.value.replace(/\D/g, "") })} autoComplete="cc-exp-year" />
+                    <FieldError id="expYear-error" message={showErr("expYear")} />
                   </div>
                 </div>
                 <div className="space-y-2">
                   <Label htmlFor="cvc">CVC</Label>
-                  <Input id="cvc" required inputMode="numeric" maxLength={4} value={card.cvc} onChange={(e) => setCard({ ...card, cvc: e.target.value })} autoComplete="cc-csc" />
+                  <Input {...cardField("cvc")} inputMode="numeric" placeholder="123" maxLength={4} onChange={(e) => setCard({ ...card, cvc: e.target.value.replace(/\D/g, "") })} autoComplete="cc-csc" />
+                  <FieldError id="cvc-error" message={showErr("cvc")} />
                 </div>
               </div>
             </CardContent>
           </Card>
         </div>
 
-        <aside className="h-fit space-y-4 rounded-xl border p-4">
+        <aside className="space-y-4 rounded-xl border bg-card p-5 md:sticky md:top-24">
           <h2 className="font-semibold">Order summary</h2>
-          <ul className="space-y-1 text-sm">
+          <ul className="space-y-3">
             {cart.lines.map((l) => (
-              <li key={l.variantId} className="flex justify-between gap-2">
-                <span>
-                  {l.productName} <span className="text-muted-foreground">({l.variantLabel}) × {l.quantity}</span>
+              <li key={l.variantId} className="flex items-center gap-3 text-sm">
+                <span className="relative size-12 shrink-0 overflow-hidden rounded-lg bg-muted ring-1 ring-foreground/5">
+                  {l.imageUrl && <Image src={l.imageUrl} alt="" fill unoptimized sizes="48px" className="object-cover" />}
                 </span>
-                <span>{formatPrice(l.lineTotalCents)}</span>
+                <span className="min-w-0 flex-1">
+                  <span className="block truncate font-medium">{l.productName}</span>
+                  <span className="text-xs text-muted-foreground">
+                    {l.variantLabel} × {l.quantity}
+                  </span>
+                </span>
+                <span className="tabular-nums">{formatPrice(l.lineTotalCents)}</span>
               </li>
             ))}
           </ul>
-          <OrderTotals totals={cart} />
+          <div className="border-t pt-4">
+            <OrderTotals totals={cart} />
+          </div>
+          {payError && (
+            <div role="alert" className="flex items-start gap-2 rounded-lg border border-destructive/30 bg-destructive/10 p-3 text-sm text-destructive">
+              <CircleAlert aria-hidden className="mt-0.5 size-4 shrink-0" />
+              {payError}
+            </div>
+          )}
           <Button type="submit" size="lg" className="w-full" disabled={busy}>
-            {busy ? "Processing…" : `Pay ${formatPrice(cart.totalCents)}`}
+            {busy ? (
+              <>
+                <Loader2 aria-hidden className="animate-spin" /> Processing payment…
+              </>
+            ) : (
+              <>
+                <Lock aria-hidden /> Pay {formatPrice(cart.totalCents)}
+              </>
+            )}
           </Button>
+          <p className="text-center text-xs text-muted-foreground">Simulated payment. No real money moves.</p>
         </aside>
       </form>
 
-      {step.threeDS && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4" role="dialog" aria-modal="true" aria-label="3-D Secure">
-          <Card className="w-full max-w-sm">
-            <CardHeader>
-              <CardTitle>Approve this payment</CardTitle>
-              <CardDescription>
-                Your (fake) bank is asking you to confirm. In a real store this would be a code or app prompt.
-              </CardDescription>
-            </CardHeader>
-            <CardContent className="space-y-2">
-              <Button className="w-full" disabled={busy} onClick={approve3DS}>
-                {busy ? "Approving…" : "Approve payment"}
-              </Button>
-              <Button variant="ghost" className="w-full" disabled={busy} onClick={() => setStep((s) => ({ ...s, threeDS: null }))}>
-                Cancel
-              </Button>
-            </CardContent>
-          </Card>
-        </div>
-      )}
+      <ThreeDSDialog
+        open={step.threeDS !== null}
+        busy={busy}
+        onApprove={approve3DS}
+        onCancel={() => setStep((s) => ({ ...s, threeDS: null }))}
+      />
     </div>
   );
 }
