@@ -41,6 +41,7 @@ function VerifyForm() {
       setCode("");
       return;
     }
+    await inbox.clear();
     toast.success("Email verified. Welcome to Plantify!");
     router.push(next);
     router.refresh();
