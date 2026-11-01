@@ -15,8 +15,9 @@ import { ConfirmDialog } from '@/components/ui/confirm-dialog';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Select } from '@/components/ui/select';
+import { Textarea } from '@/components/ui/textarea';
 import { api, errorMessage } from '@/lib/api-client';
-import { centsToDollars, dollarsToCents } from '@/lib/format';
+import { centsToDollars, dollarsToCents, capitalize } from '@/lib/format';
 import { imageSrc } from '@/lib/images';
 import { useApi } from '@/lib/use-api';
 import { cn } from '@/lib/utils';
@@ -111,13 +112,12 @@ function Details({
 			</div>
 			<div className="space-y-2">
 				<Label htmlFor="description">Description</Label>
-				<textarea
+				<Textarea
 					id="description"
 					value={description}
 					onChange={e => setDescription(e.target.value)}
 					maxLength={2000}
 					rows={4}
-					className="w-full rounded-lg border bg-background px-3 py-2 text-sm"
 				/>
 			</div>
 			<div className="grid grid-cols-2 items-end gap-4 @lg:grid-cols-3">
@@ -137,7 +137,7 @@ function Details({
 						id="status"
 						value={status}
 						onValueChange={v => setStatus(v as ProductStatus)}
-						options={PRODUCT_STATUSES.map(s => ({ value: s, label: s }))}
+						options={PRODUCT_STATUSES.map(s => ({ value: s, label: capitalize(s) }))}
 						className="w-full min-w-0"
 					/>
 				</div>

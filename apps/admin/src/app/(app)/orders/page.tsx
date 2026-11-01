@@ -8,7 +8,7 @@ import { SearchInput } from "@/components/ui/search-input";
 import { Select } from "@/components/ui/select";
 import { EmptyState, ErrorState, OrderBadge, orderStatusLabel, PageHeader, Pager, TableToolbar, RequirePermission, Skeleton, TableShell, Td, Th } from "@/components/page-bits";
 import { qs } from "@/lib/api-client";
-import { formatDateTime, formatPrice } from "@/lib/format";
+import { capitalize, formatDateTime, formatPrice } from "@/lib/format";
 import { useApi, useDebounced } from "@/lib/use-api";
 
 export default function OrdersPage() {
@@ -38,7 +38,7 @@ export default function OrdersPage() {
             setStatus(v as OrderStatus | "");
             setPage(1);
           }}
-          options={[{ value: "", label: "All statuses" }, ...ORDER_STATUSES.map((s) => ({ value: s, label: orderStatusLabel(s) }))]}
+          options={[{ value: "", label: "All statuses" }, ...ORDER_STATUSES.map((s) => ({ value: s, label: capitalize(orderStatusLabel(s)) }))]}
           aria-label="Filter by status"
         />
       </TableToolbar>

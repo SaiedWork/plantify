@@ -10,13 +10,14 @@ type ConfirmDialogProps = {
   title: string
   description: ReactNode
   confirmLabel: string
+  cancelLabel?: string
   onConfirm: () => void
   destructive?: boolean
   busy?: boolean
 }
 
 /** Confirmation step for irreversible actions. The positive button is filled, Cancel is the outline one. */
-function ConfirmDialog({ open, onOpenChange, title, description, confirmLabel, onConfirm, destructive, busy }: ConfirmDialogProps) {
+function ConfirmDialog({ open, onOpenChange, title, description, confirmLabel, cancelLabel = "Cancel", onConfirm, destructive, busy }: ConfirmDialogProps) {
   return (
     <AlertDialog.Root open={open} onOpenChange={onOpenChange}>
       <AlertDialog.Portal>
@@ -27,7 +28,7 @@ function ConfirmDialog({ open, onOpenChange, title, description, confirmLabel, o
             <AlertDialog.Description className="text-sm text-muted-foreground">{description}</AlertDialog.Description>
           </div>
           <div className="flex justify-end gap-2">
-            <AlertDialog.Close render={<Button variant="outline" disabled={busy} />}>Cancel</AlertDialog.Close>
+            <AlertDialog.Close render={<Button variant="outline" disabled={busy} />}>{cancelLabel}</AlertDialog.Close>
             <Button variant={destructive ? "destructive" : "default"} disabled={busy} onClick={onConfirm}>
               {confirmLabel}
             </Button>

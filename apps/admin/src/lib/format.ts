@@ -15,4 +15,7 @@ export function dollarsToCents(input: string): number | null {
   return Math.round(n * 100);
 }
 
+/** "draft" -> "Draft", for option labels that cannot use the capitalize class. */
+export const capitalize = (s: string) => s.charAt(0).toUpperCase() + s.slice(1);
+
 export const centsToDollars = (cents: number) => (cents / 100).toFixed(2);
