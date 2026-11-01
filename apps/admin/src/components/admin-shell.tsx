@@ -2,6 +2,7 @@
 
 import { Dialog } from '@base-ui/react/dialog';
 import { AppHeader, BreadcrumbLabelContext } from '@/components/app-header';
+import { PlantifyLogo } from '@/components/plantify-logo';
 import { UserMenu } from '@/components/user-menu';
 import { useApi } from '@/lib/use-api';
 import { cn } from '@/lib/utils';
@@ -10,7 +11,6 @@ import {
 	Boxes,
 	History,
 	LayoutDashboard,
-	Leaf,
 	Package,
 	ShieldCheck,
 	ShoppingBag,
@@ -56,8 +56,8 @@ function SidebarContent({ onNavigate }: { onNavigate?: () => void }) {
 	const { can } = useMe();
 	return (
 		<>
-			<div className="flex items-center gap-2 px-4 py-4 font-semibold text-green-800 dark:text-green-400">
-				<Leaf className="size-5" /> Plantify Admin
+			<div className="px-4 py-4">
+				<PlantifyLogo size="md" caption="Admin Console" />
 			</div>
 			<nav aria-label="Main" className="flex flex-col gap-1 px-2 pb-2">
 				{NAV.filter(n => !n.permission || can(n.permission)).map(n => {
