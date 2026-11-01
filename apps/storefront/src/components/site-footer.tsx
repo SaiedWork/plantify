@@ -5,6 +5,7 @@ const LINKS = [
   { href: "/shop", label: "Shop" },
   { href: "/cart", label: "Cart" },
   { href: "/account/orders", label: "Orders" },
+  { href: "/orders/lookup", label: "Track an order" },
   { href: "/account", label: "Account" },
 ];
 

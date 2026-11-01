@@ -56,9 +56,11 @@ export const order = pgTable(
   {
     id: id(),
     number: text('number').notNull().unique(), // e.g. PLT-000123
-    userId: text('user_id')
-      .notNull()
-      .references(() => user.id),
+    // Null for guest orders; those are reached through the order's contact email instead.
+    userId: text('user_id').references(() => user.id),
+    contactEmail: text('contact_email').notNull(),
+    // The cart this order was made from, so a guest's cart can be emptied once the order is paid.
+    cartId: text('cart_id'),
     status: text('status', { enum: ORDER_STATUSES }).notNull().default('pending_payment'),
     subtotalCents: integer('subtotal_cents').notNull(),
     shippingCents: integer('shipping_cents').notNull().default(0),
@@ -70,7 +72,25 @@ export const order = pgTable(
     createdAt: createdAt(),
     updatedAt: updatedAt(),
   },
-  (t) => [index('order_user_idx').on(t.userId), index('order_placed_idx').on(t.placedAt)],
+  (t) => [
+    index('order_user_idx').on(t.userId),
+    index('order_placed_idx').on(t.placedAt),
+    index('order_contact_email_idx').on(t.contactEmail),
+  ],
+);
+
+/** One row per status an order has had. Written by a database trigger, so every code path is covered. */
+export const orderEvent = pgTable(
+  'order_event',
+  {
+    id: id(),
+    orderId: text('order_id')
+      .notNull()
+      .references(() => order.id, { onDelete: 'cascade' }),
+    status: text('status', { enum: ORDER_STATUSES }).notNull(),
+    createdAt: createdAt(),
+  },
+  (t) => [index('order_event_order_idx').on(t.orderId, t.createdAt)],
 );
 
 export const orderItem = pgTable(

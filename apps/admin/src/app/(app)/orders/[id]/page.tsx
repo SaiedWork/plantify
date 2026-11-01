@@ -79,7 +79,8 @@ function OrderView() {
 					<h2 className="mb-1 font-semibold">Customer</h2>
 					<p>{order.customer.name}</p>
 					<p className="text-muted-foreground">{order.customer.email}</p>
-					{can('customers:view') && (
+					{order.customer.guest && <p className="mt-1 text-xs text-muted-foreground">Guest checkout, no account</p>}
+					{order.customer.id && can('customers:view') && (
 						<Link href={`/customers/${order.customer.id}`} className="mt-1 inline-block underline">
 							View customer
 						</Link>

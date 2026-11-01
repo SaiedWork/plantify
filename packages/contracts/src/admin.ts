@@ -202,7 +202,8 @@ export type AdminOrderListItem = {
   totalCents: number;
   itemCount: number;
   placedAt: string;
-  customer: { id: string; name: string; email: string };
+  /** `id` is null for guest orders, which have no account. */
+  customer: { id: string | null; name: string; email: string; guest: boolean };
 };
 
 export type AdminOrderDetail = AdminOrderListItem & {

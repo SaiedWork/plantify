@@ -53,6 +53,17 @@ function createAuth(db: Db, mail: MailService) {
           },
         },
       },
+      session: {
+        create: {
+          // Signing in needs a verified email, so this is proof of owning the address: attach any guest orders placed with it.
+          after: async (newSession) => {
+            await db.execute(sql`
+              update "order" o set user_id = u.id
+              from "user" u
+              where u.id = ${newSession.userId} and u.email_verified and o.user_id is null and lower(o.contact_email) = lower(u.email)`);
+          },
+        },
+      },
     },
     plugins: [
       emailOTP({

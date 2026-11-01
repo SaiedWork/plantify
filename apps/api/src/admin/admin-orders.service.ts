@@ -27,7 +27,7 @@ export class AdminOrdersService {
     if (query.status) where.push(sql`o.status = ${query.status}`);
     if (query.q) {
       const like = '%' + query.q.replace(/[%_\\]/g, '\\$&') + '%';
-      where.push(sql`(o.number ilike ${like} or u.email ilike ${like} or u.name ilike ${like})`);
+      where.push(sql`(o.number ilike ${like} or o.contact_email ilike ${like} or u.name ilike ${like})`);
     }
 
     const { rows } = await this.db.execute<{
@@ -37,15 +37,15 @@ export class AdminOrdersService {
       total_cents: number;
       placed_at: Date;
       item_count: string;
-      user_id: string;
-      user_name: string;
+      user_id: string | null;
+      user_name: string | null;
       user_email: string;
       total: string;
     }>(sql`
-      select o.id, o.number, o.status, o.total_cents, o.placed_at, u.id as user_id, u.name as user_name, u.email as user_email,
+      select o.id, o.number, o.status, o.total_cents, o.placed_at, u.id as user_id, u.name as user_name, o.contact_email as user_email,
         (select coalesce(sum(quantity), 0) from order_item where order_id = o.id) as item_count,
         count(*) over() as total
-      from "order" o join "user" u on u.id = o.user_id
+      from "order" o left join "user" u on u.id = o.user_id
       where ${sql.join(where, sql` and `)}
       order by o.placed_at desc
       limit ${query.pageSize} offset ${offsetOf(query.page, query.pageSize)}`);
@@ -58,7 +58,7 @@ export class AdminOrdersService {
         totalCents: r.total_cents,
         itemCount: Number(r.item_count),
         placedAt: new Date(r.placed_at).toISOString(),
-        customer: { id: r.user_id, name: r.user_name, email: r.user_email },
+        customer: { id: r.user_id, name: r.user_name ?? 'Guest', email: r.user_email, guest: r.user_id === null },
       })),
       total: rows[0] ? Number(rows[0].total) : 0,
       page: query.page,
@@ -78,12 +78,12 @@ export class AdminOrdersService {
       currency: string;
       shipping_address: Address;
       placed_at: Date;
-      user_id: string;
-      user_name: string;
+      user_id: string | null;
+      user_name: string | null;
       user_email: string;
     }>(sql`
-      select o.*, u.id as user_id, u.name as user_name, u.email as user_email
-      from "order" o join "user" u on u.id = o.user_id where o.id = ${id}`);
+      select o.*, u.id as user_id, u.name as user_name, o.contact_email as user_email
+      from "order" o left join "user" u on u.id = o.user_id where o.id = ${id}`);
     const o = rows[0];
     if (!o) throw new NotFoundException('Order not found');
 
@@ -110,7 +110,7 @@ export class AdminOrdersService {
       totalCents: o.total_cents,
       itemCount: items.rows.reduce((n, i) => n + i.quantity, 0),
       placedAt: new Date(o.placed_at).toISOString(),
-      customer: { id: o.user_id, name: o.user_name, email: o.user_email },
+      customer: { id: o.user_id, name: o.user_name ?? 'Guest', email: o.user_email, guest: o.user_id === null },
       subtotalCents: o.subtotal_cents,
       shippingCents: o.shipping_cents,
       taxCents: o.tax_cents,

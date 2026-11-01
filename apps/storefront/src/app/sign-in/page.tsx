@@ -4,7 +4,7 @@ import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
 import { Suspense, useState, type SubmitEvent } from "react";
 import { toast } from "sonner";
-import { Button } from "@/components/ui/button";
+import { Button, buttonVariants } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { InputOTP, InputOTPGroup, InputOTPSlot } from "@/components/ui/input-otp";
@@ -12,6 +12,7 @@ import { Label } from "@/components/ui/label";
 import { useDemoInbox } from "@/components/demo-inbox";
 import { safeNext } from "@/lib/api-client";
 import { authClient } from "@/lib/auth-client";
+import { cn } from "@/lib/utils";
 
 type Mode = "password" | "code";
 
@@ -127,6 +128,15 @@ function SignInForm() {
                 {busy ? "Sending…" : "Send me a code"}
               </Button>
             </form>
+          )}
+
+          {next.startsWith("/checkout") && (
+            <div className="space-y-3 border-t pt-4">
+              <p className="text-center text-sm text-muted-foreground">No account? No problem.</p>
+              <Link href="/checkout" className={cn(buttonVariants({ variant: "outline", size: "lg" }), "w-full")}>
+                Checkout as a guest
+              </Link>
+            </div>
           )}
 
           <p className="text-center text-sm text-muted-foreground">

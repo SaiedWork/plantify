@@ -13,5 +13,6 @@ export function proxy(request: NextRequest) {
 }
 
 export const config = {
-  matcher: ["/account/:path*", "/checkout/:path*"],
+  // /checkout is open on purpose: guests can check out with just an email.
+  matcher: ["/account/:path*"],
 };

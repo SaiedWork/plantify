@@ -97,9 +97,9 @@ export class WebhookDispatcher {
       email: string;
       item_count: string;
     }>(sql`
-      select o.id, o.number, o.status, o.total_cents, o.currency, u.email,
+      select o.id, o.number, o.status, o.total_cents, o.currency, o.contact_email as email,
         (select coalesce(sum(quantity), 0) from order_item where order_id = o.id) as item_count
-      from "order" o join "user" u on u.id = o.user_id where o.id = ${orderId}`);
+      from "order" o where o.id = ${orderId}`);
     const o = rows[0];
     if (!o) return [];
     return this.emit(type, {

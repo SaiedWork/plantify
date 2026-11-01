@@ -49,7 +49,14 @@ export type AddressView = Omit<Address, 'line2' | 'region'> & {
   isDefault: boolean;
 };
 
-export const createOrderSchema = z.object({ shippingAddress: addressSchema });
+export const emailSchema = z.string().trim().toLowerCase().email('Enter a valid email address').max(254);
+
+/** `email` is the guest's contact address; signed-in customers use their account email and may omit it. */
+export const createOrderSchema = z.object({ shippingAddress: addressSchema, email: emailSchema.optional() });
+export const lookupOrderSchema = z.object({
+  orderNumber: z.string().trim().toUpperCase().min(1).max(20),
+  email: emailSchema,
+});
 export const payOrderSchema = z.object({ card: cardSchema });
 
 export type OrderItemView = {
@@ -79,6 +86,21 @@ export type OrderDetail = OrderSummary & {
   payment: { status: string; cardBrand: string | null; cardLast4: string | null; failureReason: string | null } | null;
   invoice: { number: string; issuedAt: string } | null;
 };
+
+export type OrderEventView = { status: OrderStatus; at: string };
+
+/** An order as shown on the public tracking page (opened with a time-limited link) or after a guest checkout. */
+export type TrackedOrder = Omit<OrderDetail, 'items'> & {
+  items: (OrderItemView & { imageUrl: string | null })[];
+  contactEmail: string;
+  guest: boolean;
+  events: OrderEventView[];
+  /** Only on the buyer's own view: a 24-hour token for the public tracking page. */
+  trackToken?: string;
+};
+
+/** Hours a "view your order" link in the confirmation email stays valid. */
+export const ORDER_LINK_HOURS = 24;
 
 export type PayResult =
   | { status: 'paid'; orderId: string }

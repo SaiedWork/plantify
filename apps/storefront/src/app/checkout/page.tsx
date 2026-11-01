@@ -19,6 +19,7 @@ import { api, ApiError } from "@/lib/api-client";
 import { formatPrice } from "@/lib/format";
 import { cn } from "@/lib/utils";
 import { useApi } from "@/lib/use-api";
+import { authClient } from "@/lib/auth-client";
 
 const DEMO_CARDS = [
   { number: "1234 5678 9", label: "Pays successfully" },
@@ -46,6 +47,13 @@ type Errors = Record<string, string | undefined>;
 
 /** Groups the digits of a card number in fours as the shopper types. */
 const formatCardNumber = (v: string) => v.replace(/\D/g, "").slice(0, 19).replace(/(.{4})(?=.)/g, "$1 ");
+
+const EMAIL_PATTERN = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+
+function validateEmail(email: string) {
+  if (!email.trim()) return "Enter your email so we can send your receipt";
+  return EMAIL_PATTERN.test(email.trim()) ? undefined : "Enter a valid email address";
+}
 
 function validateAddress(a: AddressValues): Errors {
   return {
@@ -104,7 +112,10 @@ export default function CheckoutPage() {
   const { cart, refresh } = useCart();
   const [busy, setBusy] = useState(false);
   const [step, setStep] = useState<Step>({ orderId: null, threeDS: null });
-  const { data: saved } = useApi<AddressView[]>("/addresses");
+  const { data: session, isPending: sessionPending } = authClient.useSession();
+  // Saved addresses belong to an account, so guests skip the request.
+  const { data: saved } = useApi<AddressView[]>(session ? "/addresses" : null);
+  const [email, setEmail] = useState("");
   const [address, setAddress] = useState<AddressValues | null>(null);
   const [saveAddress, setSaveAddress] = useState(false);
   const defaultSaved = saved?.find((a) => a.isDefault) ?? saved?.[0];
@@ -123,6 +134,8 @@ export default function CheckoutPage() {
     () => null,
   );
 
+  // Signed-in customers use their account email; guests give one here.
+  const emailError = session ? undefined : validateEmail(email);
   const addressErrors = validateAddress(addressValue);
   const cardErrors = validateCard(card, thisMonth);
   const addressShown = Object.fromEntries(
@@ -165,7 +178,7 @@ export default function CheckoutPage() {
     e.preventDefault();
     setSubmitted(true);
     setPayError(null);
-    if (hasErrors(addressErrors) || hasErrors(cardErrors)) {
+    if (emailError || hasErrors(addressErrors) || hasErrors(cardErrors)) {
       // Move focus to the first field with a problem so the shopper does not have to hunt for it.
       requestAnimationFrame(() => document.querySelector<HTMLElement>("[aria-invalid=true]")?.focus());
       return;
@@ -177,11 +190,11 @@ export default function CheckoutPage() {
       if (!orderId) {
         const created = await api<{ orderId: string }>("/checkout/orders", {
           method: "POST",
-          json: { shippingAddress: toAddressPayload(addressValue) },
+          json: { shippingAddress: toAddressPayload(addressValue), ...(session ? {} : { email: email.trim().toLowerCase() }) },
         });
         orderId = created.orderId;
         setStep({ orderId, threeDS: null });
-        if (saveAddress) await api("/addresses", { method: "POST", json: toAddressPayload(addressValue) }).catch(() => {});
+        if (saveAddress && session) await api("/addresses", { method: "POST", json: toAddressPayload(addressValue) }).catch(() => {});
       }
       handleResult(
         await api<PayResult>(`/checkout/orders/${orderId}/pay`, {
@@ -247,7 +260,53 @@ export default function CheckoutPage() {
         <div className="space-y-6">
           <Card>
             <CardHeader>
-              <SectionTitle n={1} title="Shipping address" />
+              <SectionTitle n={1} title="Contact" />
+              <CardDescription>
+                {session ? "Your receipt goes to your account email." : "No account needed. We send your receipt and a link to track the order here."}
+              </CardDescription>
+            </CardHeader>
+            <CardContent className="space-y-3">
+              {sessionPending ? (
+                <div aria-hidden className="h-8 animate-pulse rounded-lg bg-muted" />
+              ) : session ? (
+                <p className="text-sm">
+                  Signed in as <span className="font-medium">{session.user.email}</span>
+                </p>
+              ) : (
+                <>
+                  <div className="space-y-2">
+                    <Label htmlFor="email">Email</Label>
+                    <Input
+                      id="email"
+                      type="email"
+                      inputMode="email"
+                      autoComplete="email"
+                      maxLength={254}
+                      value={email}
+                      disabled={locked}
+                      onChange={(e) => setEmail(e.target.value)}
+                      onBlur={() => touch("email")}
+                      aria-invalid={shown("email", { email: emailError }) ? true : undefined}
+                      aria-describedby={shown("email", { email: emailError }) ? "email-error" : undefined}
+                    />
+                    <FieldError id="email-error" message={shown("email", { email: emailError })} />
+                  </div>
+                  {!locked && (
+                    <p className="text-sm text-muted-foreground">
+                      Already have an account?{" "}
+                      <Link href="/sign-in?next=%2Fcheckout" className="underline">
+                        Sign in
+                      </Link>
+                    </p>
+                  )}
+                </>
+              )}
+            </CardContent>
+          </Card>
+
+          <Card>
+            <CardHeader>
+              <SectionTitle n={2} title="Shipping address" />
               <CardDescription>
                 {locked ? "Your order is created, so the address is locked. Just finish paying." : "Fake addresses are fine. Nothing will be shipped."}
               </CardDescription>
@@ -283,7 +342,8 @@ export default function CheckoutPage() {
                 errors={addressShown}
                 onFieldBlur={(key) => touch(`ship-${key}`)}
               />
-              {!locked && (
+              {/* Saving an address needs an account, so guests never see this. */}
+              {!locked && session && (
                 <label className="flex w-fit items-center gap-2 text-sm">
                   <Checkbox checked={saveAddress} onCheckedChange={(checked) => setSaveAddress(checked === true)} />
                   Save this address to my account
@@ -294,7 +354,7 @@ export default function CheckoutPage() {
 
           <Card>
             <CardHeader>
-              <SectionTitle n={2} title="Payment" />
+              <SectionTitle n={3} title="Payment" />
               <CardDescription>This is a simulated payment. No real card is charged or stored.</CardDescription>
             </CardHeader>
             <CardContent className="space-y-4">

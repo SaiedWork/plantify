@@ -3,13 +3,14 @@
 import Link from "next/link";
 import { useParams } from "next/navigation";
 import { Suspense, useEffect, useState } from "react";
-import type { OrderDetail } from "@plantify/contracts";
+import type { TrackedOrder } from "@plantify/contracts";
 import { CheckCircle2, Mail, Package } from "lucide-react";
 import { Button, buttonVariants } from "@/components/ui/button";
 import { useDemoInbox } from "@/components/demo-inbox";
+import { GuestAccountOffer } from "@/components/guest-account-offer";
+import { OrderItemRow } from "@/components/order-item-row";
 import { OrderTotals } from "@/components/order-totals";
 import { api } from "@/lib/api-client";
-import { formatPrice } from "@/lib/format";
 import { cn } from "@/lib/utils";
 
 function SuccessSkeleton() {
@@ -24,11 +25,17 @@ function SuccessSkeleton() {
 function Success() {
   const { orderId } = useParams<{ orderId: string }>();
   const inbox = useDemoInbox();
-  const [order, setOrder] = useState<OrderDetail | null>(null);
+  const [order, setOrder] = useState<TrackedOrder | null>(null);
   const [failed, setFailed] = useState(false);
 
+  const { refresh: refreshInbox } = inbox;
   useEffect(() => {
-    api<OrderDetail>(`/orders/${orderId}`).then(setOrder).catch(() => setFailed(true));
+    // The receipt was just emailed: show the new-mail dot in the header right away.
+    void refreshInbox();
+  }, [refreshInbox]);
+
+  useEffect(() => {
+    api<TrackedOrder>(`/orders/${orderId}`).then(setOrder).catch(() => setFailed(true));
   }, [orderId]);
 
   if (failed) {
@@ -65,17 +72,16 @@ function Success() {
             Paid with {order.payment.cardBrand} ending {order.payment.cardLast4} (simulated)
           </p>
         )}
+        <p className="mt-3 text-sm text-muted-foreground">
+          We emailed your receipt to <strong className="font-medium text-foreground">{order.contactEmail}</strong>
+          {order.guest ? ", with a link to follow this order. The link works for 24 hours." : "."}
+        </p>
       </div>
 
       <div className="rounded-xl border bg-card p-5">
         <ul className="divide-y text-sm">
           {order.items.map((i) => (
-            <li key={`${i.sku}`} className="flex justify-between py-2">
-              <span>
-                {i.productName} <span className="text-muted-foreground">({i.variantLabel}) × {i.quantity}</span>
-              </span>
-              <span className="tabular-nums">{formatPrice(i.unitPriceCents * i.quantity)}</span>
-            </li>
+            <OrderItemRow key={i.sku} item={i} />
           ))}
         </ul>
         <div className="mt-3 border-t pt-3">
@@ -87,13 +93,17 @@ function Success() {
         <Button variant="outline" size="lg" onClick={inbox.open}>
           <Mail aria-hidden /> Open receipt in demo inbox
         </Button>
-        <Link href={`/account/orders/${order.id}`} className={cn(buttonVariants({ variant: "outline", size: "lg" }))}>
-          <Package aria-hidden /> View order
+        <Link
+          href={order.guest && order.trackToken ? `/orders/track/${order.trackToken}` : `/account/orders/${order.id}`}
+          className={cn(buttonVariants({ variant: "outline", size: "lg" }))}
+        >
+          <Package aria-hidden /> {order.guest ? "Track this order" : "View order"}
         </Link>
         <Link href="/shop" className={cn(buttonVariants({ size: "lg" }))}>
           Keep shopping
         </Link>
       </div>
+      {order.guest && <GuestAccountOffer email={order.contactEmail} />}
     </div>
   );
 }

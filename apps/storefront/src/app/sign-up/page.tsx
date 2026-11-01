@@ -14,7 +14,10 @@ import { authClient } from "@/lib/auth-client";
 
 function SignUpForm() {
   const router = useRouter();
-  const next = safeNext(useSearchParams().get("next"));
+  const params = useSearchParams();
+  const next = safeNext(params.get("next"));
+  // Set by "Create an account" on a guest order, so the order is attached once the email is verified.
+  const prefillEmail = params.get("email") ?? "";
   const inbox = useDemoInbox();
   const [busy, setBusy] = useState(false);
 
@@ -52,7 +55,7 @@ function SignUpForm() {
             </div>
             <div className="space-y-2">
               <Label htmlFor="email">Email</Label>
-              <Input id="email" name="email" type="email" required maxLength={120} autoComplete="email" />
+              <Input id="email" name="email" type="email" required maxLength={120} autoComplete="email" defaultValue={prefillEmail} />
             </div>
             <div className="space-y-2">
               <Label htmlFor="password">Password</Label>
