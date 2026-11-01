@@ -157,7 +157,12 @@ export class AdminProductsService {
           insert into product (id, slug, name, description, category_id, status, featured)
           values (${id}, ${slug}, ${input.name}, ${input.description}, ${input.categoryId}, ${input.status}, ${input.featured})`);
         for (const v of input.variants) await this.insertVariant(tx, id, slug, v, actorId);
-        await this.audit.log(actorId, 'product.create', id, { name: input.name }, tx);
+        for (const [position, img] of input.images.entries()) {
+          await tx.execute(sql`
+            insert into product_image (id, product_id, url, alt, position)
+            values (${crypto.randomUUID()}, ${id}, ${img.url}, ${img.alt || input.name}, ${position})`);
+        }
+        await this.audit.log(actorId, 'product.create', id, { name: input.name, images: input.images.length }, tx);
       });
     } catch (err) {
       mapDbError(err, { unique: 'A SKU in this product is already used by another variant', foreignKey: 'Choose an existing category' });
