@@ -107,8 +107,8 @@ export function DemoInboxProvider({ children }: { children: ReactNode }) {
 export function DemoInboxButton() {
   const { open } = useDemoInbox();
   return (
-    <Button variant="outline" size="sm" onClick={open}>
-      <Mail className="size-4" /> Demo inbox
+    <Button variant="ghost" size="icon" className="bg-background" onClick={open} aria-label="Demo inbox">
+      <Mail className="size-4" />
     </Button>
   );
 }
