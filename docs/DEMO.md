@@ -18,7 +18,7 @@ A guided tour of Plantify. Everything is fake: no real payments, no real email, 
 
 1. **Browse.** Open the storefront, pick a category on the home page, then use the shop filters (price, in stock) and the search box.
 2. **Add to cart.** Open a product, choose a variant (size or pot) and add it. The cart updates in the header; open `/cart` to change quantities.
-3. **Sign up, or check out as a guest.** At checkout a guest can simply enter an email and pay (steps 5 and 6 work the same, and the success page links to a tracking page that works for 24 hours). To use an account instead, choose *Sign in* there, then *Create an account*, and use any address such as `you@example.com`.
+3. **Sign up, or check out as a guest.** At checkout a guest can simply enter an email and pay (steps 5 and 6 work the same, and the success page links to a tracking page that works for 24 hours). A guest's cart, orders and inbox are forgotten when the browser closes, so every visit starts clean. To use an account instead, choose *Sign in* there, then *Create an account*, and use any address such as `you@example.com`.
 4. **Read the code in the demo inbox.** The page says the code was sent to your demo inbox. Open the inbox slide-over, copy the 6-digit code and enter it. (Locally the same mail also lands in Mailpit at http://localhost:8025.)
 5. **Pay.** Enter an address, click *Autofill demo card* (or type `1234 5678 9`, any future expiry, CVC `123`) and pay. You land on the success page with an invoice number (`PLT-…`).
 6. **Check the receipt.** Open the demo inbox again: the order confirmation is there. Under *My account → Orders* open the order and its invoice.

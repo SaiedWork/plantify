@@ -92,7 +92,7 @@ flowchart TD
 
 A guest gives an email, then the same address and card steps as a customer. There is no account, so the order is `user_id = null` with a `contact_email`.
 
-- **Finishing the payment.** Creating the order sets a signed `guest_orders` cookie (up to 5 order ids, 24 hours). Pay, confirm and the success page accept either a session or that cookie, and only for orders without an account.
+- **Finishing the payment.** Creating the order sets a signed `guest_orders` cookie (up to 5 order ids) that lasts until the browser closes. Pay, confirm and the success page accept either a session or that cookie, and only for orders without an account.
 - **Receipt.** The confirmation email lands in the demo inbox for that address (the inbox cookie is granted for the contact email) and holds a "view your order" link, `/orders/track/<orderId>.<expiresAtMs>.<hmac>`, valid for 24 hours. The token is stateless and signed with `BETTER_AUTH_SECRET`.
 - **Tracking page.** Public, read-only: status steps with timestamps (from the `order_event` table, filled by a database trigger), items, totals, address and the invoice. An expired link offers a form to request a new one (order number plus email); the answer is always the same, so it cannot be used to discover orders. "Track an order" in the footer opens the same form.
 - **Joining an account later.** Signing in needs a verified email, so every new session attaches guest orders with that email to the account (`session.create.after` in `auth.service.ts`). The success and tracking pages offer "Create account" with the email prefilled.
