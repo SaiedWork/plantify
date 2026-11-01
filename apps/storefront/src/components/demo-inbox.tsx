@@ -1,6 +1,6 @@
 "use client";
 
-import { createContext, useContext, useEffect, useState, type ReactNode } from "react";
+import { createContext, useCallback, useContext, useEffect, useRef, useState, type ReactNode } from "react";
 import { Mail } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import {
@@ -20,8 +20,34 @@ type Message = {
   createdAt: string;
 };
 
-const InboxContext = createContext<{ open: () => void }>({ open: () => {} });
+type InboxContextValue = {
+  open: () => void;
+  /** Fetches the inbox now, e.g. right after a purchase, so the header dot appears without waiting for the next poll. */
+  refresh: () => Promise<void>;
+  unread: number;
+};
+
+const InboxContext = createContext<InboxContextValue>({ open: () => {}, refresh: async () => {}, unread: 0 });
 export const useDemoInbox = () => useContext(InboxContext);
+
+const SEEN_KEY = "plantify:inbox-seen";
+const NEVER = new Date(0).toISOString();
+
+function readSeen() {
+  try {
+    return localStorage.getItem(SEEN_KEY);
+  } catch {
+    return null;
+  }
+}
+
+function writeSeen(value: string) {
+  try {
+    localStorage.setItem(SEEN_KEY, value);
+  } catch {
+    // private mode: the dot just comes back after a reload
+  }
+}
 
 /** Stands in for a real mailbox: this demo never sends email to the internet. */
 export function DemoInboxProvider({ children }: { children: ReactNode }) {
@@ -29,31 +55,65 @@ export function DemoInboxProvider({ children }: { children: ReactNode }) {
   const [messages, setMessages] = useState<Message[]>([]);
   const [selected, setSelected] = useState<string | null>(null);
 
+  // Newest message this browser has opened the inbox for; anything newer counts as unread.
+  const seenRef = useRef<string | null>(null);
+  const latestRef = useRef<string | null>(null);
+  const openRef = useRef(false);
+  const [unread, setUnread] = useState(0);
+
+  const load = useCallback(async () => {
+    try {
+      const res = await fetch("/api/demo-inbox", { cache: "no-store" });
+      if (!res.ok) return;
+      const list: Message[] = (await res.json()).messages;
+      setMessages(list);
+      const newest = list[0]?.createdAt ?? null;
+      latestRef.current = newest;
+      // First visit ever: mail that already exists is not "new".
+      let seen = seenRef.current ?? readSeen() ?? newest ?? NEVER;
+      if (openRef.current && newest) seen = newest;
+      seenRef.current = seen;
+      writeSeen(seen);
+      setUnread(list.filter((m) => m.createdAt > seen).length);
+    } catch {
+      // transient network error: the next poll retries
+    }
+  }, []);
+
   useEffect(() => {
-    if (!isOpen) return;
-    let cancelled = false;
-    const load = async () => {
-      try {
-        const res = await fetch("/api/demo-inbox", { cache: "no-store" });
-        if (res.ok && !cancelled) setMessages((await res.json()).messages);
-      } catch {
-        // transient network error: the next poll retries
-      }
-    };
-    void load();
-    const timer = setInterval(load, 2000);
+    const first = setTimeout(() => void load(), 0);
+    // Quick while the slide-over is open; slow (and only for a visible tab) while it is closed.
+    const timer = setInterval(() => (isOpen || !document.hidden) && void load(), isOpen ? 2000 : 8000);
+    const onFocus = () => void load();
+    window.addEventListener("focus", onFocus);
     return () => {
-      cancelled = true;
+      clearTimeout(first);
       clearInterval(timer);
+      window.removeEventListener("focus", onFocus);
     };
-  }, [isOpen]);
+  }, [isOpen, load]);
+
+  function openInbox() {
+    openRef.current = true;
+    if (latestRef.current) {
+      seenRef.current = latestRef.current;
+      writeSeen(latestRef.current);
+    }
+    setUnread(0);
+    setOpen(true);
+  }
+
+  function onOpenChange(next: boolean) {
+    openRef.current = next;
+    setOpen(next);
+  }
 
   const current = messages.find((m) => m.id === selected);
 
   return (
-    <InboxContext.Provider value={{ open: () => setOpen(true) }}>
+    <InboxContext.Provider value={{ open: openInbox, refresh: load, unread }}>
       {children}
-      <Sheet open={isOpen} onOpenChange={setOpen}>
+      <Sheet open={isOpen} onOpenChange={onOpenChange}>
         <SheetContent className="w-full overflow-y-auto sm:max-w-md">
           <SheetHeader>
             <SheetTitle>Demo inbox</SheetTitle>
@@ -105,10 +165,17 @@ export function DemoInboxProvider({ children }: { children: ReactNode }) {
 }
 
 export function DemoInboxButton() {
-  const { open } = useDemoInbox();
+  const { open, unread } = useDemoInbox();
   return (
-    <Button variant="ghost" size="icon" className="bg-background" onClick={open} aria-label="Demo inbox">
+    <Button
+      variant="ghost"
+      size="icon"
+      className="relative bg-background"
+      onClick={open}
+      aria-label={unread > 0 ? `Demo inbox, ${unread} new ${unread === 1 ? "message" : "messages"}` : "Demo inbox"}
+    >
       <Mail className="size-4" />
+      {unread > 0 && <span aria-hidden className="absolute top-1 right-1 size-2.5 rounded-full bg-red-500 ring-2 ring-background" />}
     </Button>
   );
 }

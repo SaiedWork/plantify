@@ -4,6 +4,7 @@ export class ApiError extends Error {
   constructor(
     message: string,
     public status: number,
+    public code?: string,
   ) {
     super(message);
   }
@@ -20,7 +21,7 @@ export async function api<T>(path: string, init?: RequestInit & { json?: unknown
   if (!res.ok) {
     const body = await res.json().catch(() => null);
     const message = Array.isArray(body?.message) ? body.message.join(", ") : (body?.message ?? "Something went wrong");
-    throw new ApiError(message, res.status);
+    throw new ApiError(message, res.status, typeof body?.code === "string" ? body.code : undefined);
   }
   if (res.status === 204) return undefined as T;
   return res.json() as Promise<T>;

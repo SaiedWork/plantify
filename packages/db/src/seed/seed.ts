@@ -145,6 +145,7 @@ export async function seed(db: Db, now = new Date()) {
   type PlannedOrder = {
     id: string;
     userId: string;
+    contactEmail: string;
     placedAt: Date;
     status: OrderStatus;
     lines: { variant: (typeof variants)[number]; quantity: number }[];
@@ -173,6 +174,7 @@ export async function seed(db: Db, now = new Date()) {
       planned.push({
         id: faker.string.uuid(),
         userId: customer.id,
+        contactEmail: customer.email,
         placedAt,
         status: statusForAge((now.getTime() - placedAt.getTime()) / DAY),
         lines: picked.map((variant) => ({
@@ -209,6 +211,7 @@ export async function seed(db: Db, now = new Date()) {
       id: o.id,
       number,
       userId: o.userId,
+      contactEmail: o.contactEmail,
       status: o.status,
       subtotalCents: subtotal,
       shippingCents: shipping,

@@ -45,15 +45,16 @@ export class PaymentEventsService {
         id: string;
         number: string;
         status: string;
-        user_id: string;
+        user_id: string | null;
+        cart_id: string | null;
         subtotal_cents: number;
         shipping_cents: number;
         tax_cents: number;
         total_cents: number;
-        email: string;
+        contact_email: string;
       }>(sql`
-        select o.id, o.number, o.status, o.user_id, o.subtotal_cents, o.shipping_cents, o.tax_cents, o.total_cents, u.email
-        from "order" o join "user" u on u.id = o.user_id
+        select o.id, o.number, o.status, o.user_id, o.cart_id, o.subtotal_cents, o.shipping_cents, o.tax_cents, o.total_cents, o.contact_email
+        from "order" o
         where o.id = ${orderId} for update of o`);
       const order = orders[0];
       if (!order || order.status !== 'pending_payment') return { status: 'ignored' } as HandleResult;
@@ -105,14 +106,19 @@ export class PaymentEventsService {
       await tx.execute(sql`update "order" set status = 'paid', updated_at = now() where id = ${orderId}`);
       await tx.execute(sql`update payment set status = 'succeeded' where id = ${paymentId}`);
       await tx.execute(sql`insert into invoice (id, number, order_id, total_cents) values (${crypto.randomUUID()}, ${invoiceNumber}, ${orderId}, ${order.total_cents})`);
-      await tx.execute(sql`delete from cart_item where cart_id in (select id from cart where user_id = ${order.user_id})`);
+      if (order.cart_id) {
+        await tx.execute(sql`delete from cart_item where cart_id = ${order.cart_id}`);
+      } else if (order.user_id) {
+        await tx.execute(sql`delete from cart_item where cart_id in (select id from cart where user_id = ${order.user_id})`);
+      }
 
       return {
         status: 'paid',
         orderId,
         crossedLowStock,
         receipt: {
-          to: order.email,
+          to: order.contact_email,
+          orderId: order.id,
           orderNumber: order.number,
           invoiceNumber,
           items: items.map((i) => ({

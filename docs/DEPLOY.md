@@ -38,7 +38,7 @@ URLs below assume the default `*.vercel.app` names; substitute your own.
 | `PAYMENT_WEBHOOK_SECRET` | random |
 | `CRON_SECRET` | random; Vercel sends it as `Authorization: Bearer` on cron calls |
 | `API_URL` | public URL of the API project (Better Auth base URL, mock payment webhook target) |
-| `STOREFRONT_URL` / `ADMIN_URL` | public URLs of the two Next projects (trusted origins) |
+| `STOREFRONT_URL` / `ADMIN_URL` | public URLs of the two Next projects (trusted origins; `STOREFRONT_URL` is also the base of the order links in emails) |
 | `BLOB_READ_WRITE_TOKEN` | from a Vercel Blob store connected to this project |
 
 Leave `SMTP_URL` unset: mail goes to the DB-backed demo inbox. Do not set `AUTH_RATE_LIMIT` or `WEBHOOK_ALLOW_PRIVATE` (e2e-only switches).

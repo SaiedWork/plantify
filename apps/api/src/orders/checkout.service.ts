@@ -2,6 +2,7 @@ import { BadRequestException, ConflictException, ForbiddenException, Injectable,
 import { computeTotals, DAILY_NEW_ORDERS_CAP, type Address, type CardInput, type PayResult } from '@plantify/contracts';
 import { sql } from 'drizzle-orm';
 import { InjectDb, type Db } from '../db/db.module.js';
+import { ownedBy, type Buyer } from './buyer.js';
 import { MockPaymentProvider } from '../payments/mock-payment.provider.js';
 import { WebhookDispatcher } from '../webhooks/webhook-dispatcher.service.js';
 
@@ -14,8 +15,15 @@ export class CheckoutService {
   ) {}
 
   /** Snapshots the cart into a `pending_payment` order. Nothing is reserved or charged yet. */
-  async createOrder(userId: string, cartId: string | null, address: Address): Promise<{ orderId: string }> {
+  async createOrder(
+    buyer: { userId: string; email: string } | { userId: null; email: string | undefined },
+    cartId: string | null,
+    address: Address,
+  ): Promise<{ orderId: string }> {
     if (!cartId) throw new BadRequestException('Your cart is empty');
+    const contactEmail = buyer.email;
+    if (!contactEmail) throw new BadRequestException('Enter your email address so we can send your receipt');
+    const userId = buyer.userId;
 
     const created = await this.db.transaction(async (tx) => {
       // Serialises order numbering across concurrent checkouts.
@@ -28,8 +36,11 @@ export class CheckoutService {
 
       const { rows: carts } = await tx.execute<{ user_id: string | null }>(sql`select user_id from cart where id = ${cartId} for update`);
       if (!carts[0]) throw new BadRequestException('Your cart is empty');
-      if (carts[0].user_id && carts[0].user_id !== userId) throw new ForbiddenException();
-      await tx.execute(sql`update cart set user_id = ${userId} where id = ${cartId}`);
+      // A signed-in customer claims the cart; holding the cart cookie is enough for a guest to check out with it.
+      if (userId) {
+        if (carts[0].user_id && carts[0].user_id !== userId) throw new ForbiddenException();
+        await tx.execute(sql`update cart set user_id = ${userId} where id = ${cartId}`);
+      }
 
       const { rows: lines } = await tx.execute<{
         variant_id: string;
@@ -61,8 +72,8 @@ export class CheckoutService {
       const orderId = crypto.randomUUID();
 
       await tx.execute(sql`
-        insert into "order" (id, number, user_id, status, subtotal_cents, shipping_cents, tax_cents, total_cents, shipping_address)
-        values (${orderId}, ${number}, ${userId}, 'pending_payment', ${totals.subtotalCents}, ${totals.shippingCents},
+        insert into "order" (id, number, user_id, contact_email, cart_id, status, subtotal_cents, shipping_cents, tax_cents, total_cents, shipping_address)
+        values (${orderId}, ${number}, ${userId}, ${contactEmail}, ${cartId}, 'pending_payment', ${totals.subtotalCents}, ${totals.shippingCents},
                 ${totals.taxCents}, ${totals.totalCents}, ${JSON.stringify(address)}::jsonb)`);
       for (const l of lines) {
         await tx.execute(sql`
@@ -75,9 +86,9 @@ export class CheckoutService {
     return created;
   }
 
-  async pay(userId: string, orderId: string, card: CardInput): Promise<PayResult> {
+  async pay(buyer: Buyer, orderId: string, card: CardInput): Promise<PayResult> {
     const { rows } = await this.db.execute<{ status: string; total_cents: number }>(
-      sql`select status, total_cents from "order" where id = ${orderId} and user_id = ${userId}`,
+      sql`select o.status, o.total_cents from "order" o where o.id = ${orderId} and ${ownedBy(buyer)}`,
     );
     const order = rows[0];
     if (!order) throw new NotFoundException('Order not found');
@@ -103,10 +114,10 @@ export class CheckoutService {
   }
 
   /** The fake 3-D Secure "Approve" button. */
-  async confirm(userId: string, paymentId: string): Promise<PayResult> {
+  async confirm(buyer: Buyer, paymentId: string): Promise<PayResult> {
     const { rows } = await this.db.execute<{ order_id: string; status: string }>(sql`
       select p.order_id, p.status from payment p join "order" o on o.id = p.order_id
-      where p.id = ${paymentId} and o.user_id = ${userId}`);
+      where p.id = ${paymentId} and ${ownedBy(buyer)}`);
     const payment = rows[0];
     if (!payment) throw new NotFoundException('Payment not found');
     if (payment.status !== 'requires_action') throw new ConflictException('This payment does not need confirmation');

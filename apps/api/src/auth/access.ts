@@ -6,11 +6,14 @@ import type { Request } from 'express';
 import { AuthService } from './auth.service.js';
 
 const PUBLIC = 'access:public';
+const OPTIONAL = 'access:optional';
 const ROLES_KEY = 'access:roles';
 const PERMISSION = 'access:permission';
 
 /** Skips authentication (health, catalog browsing, ...). */
 export const Public = () => SetMetadata(PUBLIC, true);
+/** Like @Public(), but still fills `req.user` when a session exists (guest checkout). */
+export const OptionalAuth = () => SetMetadata(OPTIONAL, true);
 /** Allow only these roles. */
 export const Roles = (...roles: Role[]) => SetMetadata(ROLES_KEY, roles);
 /** Allow only roles holding this permission (see packages/contracts). */
@@ -33,7 +36,10 @@ export class AccessGuard implements CanActivate {
 
     const req = context.switchToHttp().getRequest<AuthedRequest>();
     const result = await this.authService.auth.api.getSession({ headers: fromNodeHeaders(req.headers) });
-    if (!result) throw new UnauthorizedException();
+    if (!result) {
+      if (this.reflector.getAllAndOverride<boolean>(OPTIONAL, targets)) return true;
+      throw new UnauthorizedException();
+    }
 
     const role = (ROLES as readonly string[]).includes((result.user as { role?: string }).role ?? '')
       ? ((result.user as { role: Role }).role)

@@ -72,6 +72,7 @@ export default function OrdersPage() {
                   <Td className="whitespace-nowrap">{formatDateTime(o.placedAt)}</Td>
                   <Td clamp>
                     {o.customer.name}
+                    {o.customer.guest && <span className="ml-1.5 rounded-full bg-muted px-1.5 py-0.5 text-[10px] font-medium text-muted-foreground">Guest</span>}
                     <span className="block text-xs text-muted-foreground">{o.customer.email}</span>
                   </Td>
                   <Td>

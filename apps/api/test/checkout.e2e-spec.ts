@@ -110,8 +110,8 @@ describe('Cart + checkout + payments (e2e)', () => {
   });
 
   describe('checkout', () => {
-    it('requires a signed-in customer and a non-empty cart', async () => {
-      await http().post('/api/checkout/orders').send({ shippingAddress: ADDRESS }).expect(401);
+    it('needs a non-empty cart, and an email from guests', async () => {
+      await http().post('/api/checkout/orders').send({ shippingAddress: ADDRESS, email: 'guest@example.com' }).expect(400);
       const { jar } = await customer();
       await createOrder(jar).expect(400);
     });
