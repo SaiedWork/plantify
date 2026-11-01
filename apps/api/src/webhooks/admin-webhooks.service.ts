@@ -1,5 +1,5 @@
 import { BadRequestException, Injectable, NotFoundException } from '@nestjs/common';
-import type { DeliveryQuery, Page, WebhookDeliveryView, WebhookEndpointInput, WebhookEndpointView, WebhookEventType } from '@plantify/contracts';
+import { WEBHOOK_ECHO_URL, type DeliveryQuery, type Page, type WebhookDeliveryView, type WebhookEndpointInput, type WebhookEndpointView, type WebhookEventType } from '@plantify/contracts';
 import { sql, type SQL } from 'drizzle-orm';
 import { randomBytes } from 'node:crypto';
 import { AuditService } from '../audit/audit.service.js';
@@ -67,7 +67,7 @@ export class AdminWebhooksService {
 
   async createEndpoint(actorId: string, input: WebhookEndpointInput): Promise<WebhookEndpointView> {
     await this.checkUrl(input.url);
-    const { rows } = await this.db.execute<{ n: string }>(sql`select count(*) as n from webhook_endpoint`);
+    const { rows } = await this.db.execute<{ n: string }>(sql`select count(*) as n from webhook_endpoint where url <> ${WEBHOOK_ECHO_URL}`);
     if (Number(rows[0]!.n) >= MAX_ENDPOINTS) throw new BadRequestException(`You can register at most ${MAX_ENDPOINTS} endpoints`);
 
     const id = crypto.randomUUID();
@@ -80,7 +80,10 @@ export class AdminWebhooksService {
   }
 
   async updateEndpoint(actorId: string, id: string, patch: Partial<WebhookEndpointInput>): Promise<WebhookEndpointView> {
-    if (patch.url !== undefined) await this.checkUrl(patch.url);
+    if (patch.url !== undefined) {
+      if ((await this.endpoint(id)).url === WEBHOOK_ECHO_URL) throw new BadRequestException('The built-in endpoint cannot change its URL');
+      await this.checkUrl(patch.url);
+    }
     const sets: SQL[] = [];
     if (patch.url !== undefined) sets.push(sql`url = ${patch.url}`);
     if (patch.events !== undefined) sets.push(sql`events = ${JSON.stringify(patch.events)}::jsonb`);
@@ -93,6 +96,7 @@ export class AdminWebhooksService {
   }
 
   async removeEndpoint(actorId: string, id: string): Promise<void> {
+    if ((await this.endpoint(id)).url === WEBHOOK_ECHO_URL) throw new BadRequestException('The built-in endpoint cannot be deleted, only paused');
     const res = await this.db.execute(sql`delete from webhook_endpoint where id = ${id} returning id`);
     if (res.rows.length === 0) throw new NotFoundException('Endpoint not found');
     await this.audit.log(actorId, 'webhook.delete', id);

@@ -30,7 +30,7 @@ import type {
 	WebhookEndpointView,
 	WebhookEventType,
 } from '@plantify/contracts';
-import { WEBHOOK_EVENTS } from '@plantify/contracts';
+import { WEBHOOK_ECHO_LABEL, WEBHOOK_ECHO_URL, WEBHOOK_EVENTS } from '@plantify/contracts';
 import { Copy, Eye, EyeOff, Info, Plus, RefreshCw, Trash2 } from 'lucide-react';
 import { Fragment, useState, type SubmitEvent } from 'react';
 import { toast } from 'sonner';
@@ -69,6 +69,10 @@ function EventPicker({
 	);
 }
 
+/** Shows the built-in receiver by name; real endpoints by host and path. */
+const endpointLabel = (url: string) =>
+	url === WEBHOOK_ECHO_URL ? WEBHOOK_ECHO_LABEL : url.replace(/^https?:\/\//, '');
+
 function EndpointCard({
 	endpoint,
 	onChange,
@@ -81,6 +85,7 @@ function EndpointCard({
 	const [editing, setEditing] = useState(false);
 	const [events, setEvents] = useState<WebhookEventType[]>(endpoint.events);
 	const [confirmingDelete, setConfirmingDelete] = useState(false);
+	const builtin = endpoint.url === WEBHOOK_ECHO_URL;
 
 	async function act(action: () => Promise<unknown>, success: string) {
 		setBusy(true);
@@ -117,11 +122,17 @@ function EndpointCard({
 		<li className={cn('space-y-3 rounded-xl border p-4', !endpoint.active && 'opacity-70')}>
 			<div className="flex flex-wrap items-start justify-between gap-2">
 				<div className="min-w-0">
-					<p className="truncate font-mono text-sm">{endpoint.url}</p>
+					<p className={cn('truncate text-sm', !builtin && 'font-mono')}>{endpointLabel(endpoint.url)}</p>
 					<p className="text-xs text-muted-foreground">
 						{endpoint.stats.delivered} delivered · {endpoint.stats.failed} failed ·{' '}
 						{endpoint.stats.pending} pending
 					</p>
+					{builtin && (
+						<p className="mt-1 text-xs text-muted-foreground">
+							Receives and verifies every signed event inside Plantify, so webhooks work without an
+							external URL. Check the delivery log below.
+						</p>
+					)}
 				</div>
 				<Badge
 					className={
@@ -226,15 +237,17 @@ function EndpointCard({
 				>
 					{endpoint.active ? 'Pause' : 'Resume'}
 				</Button>
-				<Button
-					variant="destructive"
-					size="icon"
-					aria-label={`Delete ${endpoint.url}`}
-					disabled={busy}
-					onClick={() => setConfirmingDelete(true)}
-				>
-					<Trash2 />
-				</Button>
+				{!builtin && (
+					<Button
+						variant="destructive"
+						size="icon"
+						aria-label={`Delete ${endpoint.url}`}
+						disabled={busy}
+						onClick={() => setConfirmingDelete(true)}
+					>
+						<Trash2 />
+					</Button>
+				)}
 			</div>
 			<ConfirmDialog
 				open={confirmingDelete}
@@ -280,7 +293,7 @@ function Endpoints({ onChange, version }: { onChange: () => void; version: numbe
 		}
 	}
 
-	const atLimit = (data?.length ?? 0) >= 5;
+	const atLimit = (data?.filter(ep => ep.url !== WEBHOOK_ECHO_URL).length ?? 0) >= 5;
 
 	const refresh = () => {
 		reload();
@@ -322,7 +335,7 @@ function Endpoints({ onChange, version }: { onChange: () => void; version: numbe
 						maxLength={500}
 					/>
 					<p className="text-xs text-muted-foreground">
-						HTTPS only. Addresses on private networks are blocked. Up to 5 endpoints.
+						Optional: the built-in endpoint already works. Your own URL must be HTTPS and public (webhook.site gives you a free one). Up to 5 endpoints.
 					</p>
 				</div>
 				<div className="my-6">
@@ -382,7 +395,7 @@ function Deliveries({ endpoints, version }: { endpoints: WebhookEndpointView[]; 
 						{ value: '', label: 'All endpoints' },
 						...endpoints.map(ep => ({
 							value: ep.id,
-							label: ep.url.replace(/^https?:\/\//, '').slice(0, 40),
+							label: endpointLabel(ep.url).slice(0, 40),
 						})),
 					]}
 					aria-label="Filter by endpoint"
@@ -436,7 +449,7 @@ function Deliveries({ endpoints, version }: { endpoints: WebhookEndpointView[]; 
 											<code className="text-xs">{d.event}</code>
 										</Td>
 										<Td clamp className="min-w-48 max-w-64 text-xs break-all text-muted-foreground">
-											{d.endpointUrl.replace(/^https?:\/\//, '')}
+											{endpointLabel(d.endpointUrl)}
 										</Td>
 										<Td className="whitespace-nowrap">
 											<Badge className={STATUS_STYLE[d.status]}>{d.status}</Badge>

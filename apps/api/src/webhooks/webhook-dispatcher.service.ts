@@ -1,5 +1,6 @@
 import { Injectable, Logger } from '@nestjs/common';
 import {
+  WEBHOOK_ECHO_URL,
   WEBHOOK_MAX_ATTEMPTS,
   WEBHOOK_SIGNATURE_HEADER,
   type WebhookDeliveryView,
@@ -9,7 +10,7 @@ import {
 import { waitUntil } from '@vercel/functions';
 import { sql } from 'drizzle-orm';
 import { InjectDb, type Db } from '../db/db.module.js';
-import { signPayload } from '../payments/signature.js';
+import { signPayload, verifySignature } from '../payments/signature.js';
 import { assertSafeWebhookUrl } from './ssrf.js';
 
 const TIMEOUT_MS = 5000;
@@ -146,8 +147,15 @@ export class WebhookDispatcher {
     let error: string | null = null;
     try {
       if (!target.active && target.event !== 'ping') throw new Error('Endpoint is disabled');
-      const url = await assertSafeWebhookUrl(target.url); // re-checked each time: DNS can change after saving
       const body = JSON.stringify(target.payload);
+      if (target.url === WEBHOOK_ECHO_URL) {
+        // Built-in receiver: no network hop, but the same signature contract a real endpoint must honour.
+        const signature = signPayload(body, target.secret);
+        if (!verifySignature(Buffer.from(body), signature, target.secret)) throw new Error('Signature check failed');
+        responseCode = 200;
+        return await this.record(deliveryId, responseCode, null);
+      }
+      const url = await assertSafeWebhookUrl(target.url); // re-checked each time: DNS can change after saving
       const res = await fetch(url, {
         method: 'POST',
         redirect: 'manual', // never follow redirects into internal addresses
@@ -168,6 +176,10 @@ export class WebhookDispatcher {
       error = e.name === 'TimeoutError' ? `Timed out after ${TIMEOUT_MS / 1000}s` : e.message;
     }
 
+    return this.record(deliveryId, responseCode, error);
+  }
+
+  private async record(deliveryId: string, responseCode: number | null, error: string | null) {
     await this.db.execute(sql`
       update webhook_delivery set
         attempts = attempts + 1, response_code = ${responseCode}, last_error = ${error},
