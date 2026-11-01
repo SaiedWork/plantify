@@ -2,13 +2,13 @@
 
 import { useRouter } from "next/navigation";
 import { Search } from "lucide-react";
-import type { FormEvent } from "react";
+import type { SubmitEvent } from "react";
 import { Input } from "@/components/ui/input";
 
 export function SearchBox() {
   const router = useRouter();
 
-  function onSubmit(e: FormEvent<HTMLFormElement>) {
+  function onSubmit(e: SubmitEvent<HTMLFormElement>) {
     e.preventDefault();
     const q = String(new FormData(e.currentTarget).get("q") ?? "").trim();
     router.push(q ? `/shop?q=${encodeURIComponent(q)}` : "/shop");

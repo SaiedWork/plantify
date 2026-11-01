@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, type FormEvent } from "react";
+import { useState, type SubmitEvent } from "react";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -11,7 +11,7 @@ function ProfileForm({ name, email, verified }: { name: string; email: string; v
   const [value, setValue] = useState(name);
   const [busy, setBusy] = useState(false);
 
-  async function onSubmit(e: FormEvent) {
+  async function onSubmit(e: SubmitEvent) {
     e.preventDefault();
     setBusy(true);
     const { error } = await authClient.updateUser({ name: value.trim() });
@@ -42,7 +42,7 @@ function ProfileForm({ name, email, verified }: { name: string; email: string; v
 function PasswordForm() {
   const [busy, setBusy] = useState(false);
 
-  async function onSubmit(e: FormEvent<HTMLFormElement>) {
+  async function onSubmit(e: SubmitEvent<HTMLFormElement>) {
     e.preventDefault();
     const form = e.currentTarget;
     const data = new FormData(form);

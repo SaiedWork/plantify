@@ -31,7 +31,7 @@ import { MAX_IMAGES_PER_PRODUCT, PRODUCT_STATUSES } from '@plantify/contracts';
 import { Plus, Trash2 } from 'lucide-react';
 import Link from 'next/link';
 import { useParams, useRouter } from 'next/navigation';
-import { Suspense, useState, type FormEvent } from 'react';
+import { Suspense, useState, type SubmitEvent } from 'react';
 import { toast } from 'sonner';
 
 /** Runs a mutation with a busy flag and toast feedback; returns whether it succeeded. */
@@ -77,7 +77,7 @@ function Details({
 		status !== product.status ||
 		featured !== product.featured;
 
-	function onSubmit(e: FormEvent) {
+	function onSubmit(e: SubmitEvent) {
 		e.preventDefault();
 		void run(
 			() =>
@@ -290,7 +290,7 @@ function Variants({ product, reload }: { product: AdminProductDetail; reload: ()
 	const [threshold, setThreshold] = useState('5');
 	const atLimit = product.variants.length >= 10;
 
-	async function add(e: FormEvent) {
+	async function add(e: SubmitEvent) {
 		e.preventDefault();
 		const priceCents = dollarsToCents(price);
 		if (
