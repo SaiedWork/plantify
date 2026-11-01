@@ -1,6 +1,7 @@
 import '../src/env.js';
 import { Test } from '@nestjs/testing';
 import type { NestExpressApplication } from '@nestjs/platform-express';
+import { WEBHOOK_ECHO_URL } from '@plantify/contracts';
 import { DEMO_STAFF_PASSWORD } from '@plantify/db';
 import { sql } from 'drizzle-orm';
 import { createServer, type IncomingHttpHeaders, type Server } from 'node:http';
@@ -84,6 +85,7 @@ describe('Outbound webhooks (e2e)', () => {
 
   afterAll(async () => {
     await db.execute(sql`delete from webhook_endpoint`);
+    await insertEcho(); // leave the seeded built-in endpoint in place for local dev
     if (createdProducts.length > 0) {
       const ids = sql.join(createdProducts.map((id) => sql`${id}`), sql`, `);
       await db.execute(sql`
@@ -100,6 +102,14 @@ describe('Outbound webhooks (e2e)', () => {
     receiver.state.status = 200;
     await db.execute(sql`delete from webhook_endpoint`);
   });
+
+  const insertEcho = async () => {
+    const id = crypto.randomUUID();
+    await db.execute(sql`
+      insert into webhook_endpoint (id, url, secret, events, active)
+      values (${id}, ${WEBHOOK_ECHO_URL}, ${`whsec_${'ab'.repeat(24)}`}, ${JSON.stringify(['order.paid', 'order.created'])}::jsonb, true)`);
+    return id;
+  };
 
   const register = async (events: string[], over: Record<string, unknown> = {}) =>
     (await owner.post('/api/admin/webhooks/endpoints').send({ url: receiver.url, events, ...over }).expect(201)).body as {
@@ -184,6 +194,30 @@ describe('Outbound webhooks (e2e)', () => {
       await owner.patch(`/api/admin/webhooks/endpoints/${ep.id}`).send({}).expect(400);
       await owner.delete(`/api/admin/webhooks/endpoints/${ep.id}`).expect(204);
       await owner.delete(`/api/admin/webhooks/endpoints/${ep.id}`).expect(404);
+    });
+  });
+
+  describe('built-in echo endpoint', () => {
+    it('delivers events in-process, can be tested and paused, but not re-pointed or deleted', async () => {
+      const id = await insertEcho();
+      const test = await owner.post(`/api/admin/webhooks/endpoints/${id}/test`).expect(200);
+      expect(test.body).toMatchObject({ status: 'delivered', responseCode: 200, lastError: null, endpointUrl: WEBHOOK_ECHO_URL });
+
+      const { variantId } = await newProduct(20);
+      await buy(variantId, 1);
+      const log = await waitFor(() => deliveries(id), (d) => d.items.some((i: { event: string }) => i.event === 'order.paid'));
+      expect(log.items.every((i: { status: string }) => i.status === 'delivered')).toBe(true);
+
+      await owner.patch(`/api/admin/webhooks/endpoints/${id}`).send({ active: false }).expect(200);
+      await owner.patch(`/api/admin/webhooks/endpoints/${id}`).send({ url: receiver.url }).expect(400);
+      await owner.delete(`/api/admin/webhooks/endpoints/${id}`).expect(400);
+      await owner.post('/api/admin/webhooks/endpoints').send({ url: WEBHOOK_ECHO_URL, events: ['order.paid'] }).expect(400);
+    });
+
+    it('does not count towards the endpoint cap', async () => {
+      await insertEcho();
+      for (let i = 0; i < 5; i++) await register(['order.paid']);
+      await owner.post('/api/admin/webhooks/endpoints').send({ url: receiver.url, events: ['order.paid'] }).expect(400);
     });
   });
 

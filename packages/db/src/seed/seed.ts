@@ -350,6 +350,17 @@ export async function seed(db: Db, now = new Date()) {
   await insertChunks(db, s.inventoryMovement, movements);
   await insertChunks(db, s.auditLog, auditRows);
 
+  // Built-in demo receiver (see WEBHOOK_ECHO_URL in @plantify/contracts); delivered in-process by the API.
+  await insertChunks(db, s.webhookEndpoint, [
+    {
+      id: faker.string.uuid(),
+      url: 'plantify://echo',
+      secret: `whsec_${faker.string.hexadecimal({ length: 48, prefix: '', casing: 'lower' })}`,
+      events: ['order.created', 'order.paid', 'order.shipped', 'order.delivered', 'order.refunded', 'inventory.low'],
+      active: true,
+    },
+  ]);
+
   await insertChunks(db, s.meta, [
     { key: 'last_reset_at', value: now.toISOString() },
     { key: 'seed_version', value: '1' },

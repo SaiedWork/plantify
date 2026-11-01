@@ -80,6 +80,13 @@ export type WebhookEventType = (typeof WEBHOOK_EVENTS)[number];
 export const WEBHOOK_MAX_ATTEMPTS = 5;
 export const WEBHOOK_SIGNATURE_HEADER = 'x-plantify-signature';
 
+/**
+ * The built-in demo receiver. Not a real URL: the dispatcher recognises it and verifies the signed
+ * delivery in-process, so a fresh install has a working endpoint without any network access.
+ */
+export const WEBHOOK_ECHO_URL = 'plantify://echo';
+export const WEBHOOK_ECHO_LABEL = 'Plantify Echo (built-in)';
+
 export const webhookEndpointSchema = z.object({
   url: z.string().trim().url().max(500),
   events: z.array(z.enum(WEBHOOK_EVENTS)).min(1).max(WEBHOOK_EVENTS.length),
