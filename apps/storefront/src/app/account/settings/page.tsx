@@ -5,6 +5,7 @@ import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { PasswordInput } from "@/components/password-input";
 import { authClient } from "@/lib/auth-client";
 
 function ProfileForm({ name, email, verified }: { name: string; email: string; verified: boolean }) {
@@ -21,7 +22,7 @@ function ProfileForm({ name, email, verified }: { name: string; email: string; v
   }
 
   return (
-    <form onSubmit={onSubmit} className="space-y-4 rounded-xl border p-4">
+    <form onSubmit={onSubmit} className="space-y-4 rounded-xl border bg-card p-5">
       <h3 className="font-semibold">Profile</h3>
       <div className="space-y-2">
         <Label htmlFor="name">Name</Label>
@@ -67,19 +68,19 @@ function PasswordForm() {
   }
 
   return (
-    <form onSubmit={onSubmit} className="space-y-4 rounded-xl border p-4">
+    <form onSubmit={onSubmit} className="space-y-4 rounded-xl border bg-card p-5">
       <h3 className="font-semibold">Change password</h3>
       <div className="space-y-2">
         <Label htmlFor="currentPassword">Current password</Label>
-        <Input id="currentPassword" name="currentPassword" type="password" required autoComplete="current-password" />
+        <PasswordInput id="currentPassword" name="currentPassword" required autoComplete="current-password" />
       </div>
       <div className="space-y-2">
         <Label htmlFor="newPassword">New password</Label>
-        <Input id="newPassword" name="newPassword" type="password" required minLength={8} maxLength={128} autoComplete="new-password" />
+        <PasswordInput id="newPassword" name="newPassword" required minLength={8} maxLength={128} autoComplete="new-password" />
       </div>
       <div className="space-y-2">
         <Label htmlFor="confirm">Confirm new password</Label>
-        <Input id="confirm" name="confirm" type="password" required minLength={8} maxLength={128} autoComplete="new-password" />
+        <PasswordInput id="confirm" name="confirm" required minLength={8} maxLength={128} autoComplete="new-password" />
       </div>
       <Button type="submit" disabled={busy}>
         {busy ? "Updating…" : "Update password"}
@@ -93,7 +94,7 @@ export default function SettingsPage() {
 
   return (
     <div className="max-w-lg space-y-6">
-      <h2 className="text-2xl font-bold">Settings</h2>
+      <h2 className="text-2xl font-bold tracking-tight">Settings</h2>
       {isPending || !session ? (
         <div className="h-48 animate-pulse rounded-xl bg-muted" />
       ) : (

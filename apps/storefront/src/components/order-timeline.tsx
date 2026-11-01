@@ -20,14 +20,17 @@ export function OrderTimeline({ status, events }: { status: OrderStatus; events:
     return <p className="text-sm text-muted-foreground">This order is waiting for payment. We start packing it as soon as it is paid.</p>;
   }
 
+  // Cancelled before it was ever paid: there are no delivery steps to show.
+  const steps = ended && reached < 0 ? [] : STEPS;
+
   return (
     <ol className="space-y-0">
-      {STEPS.map((step, i) => {
+      {steps.map((step, i) => {
         const done = i <= reached;
         const current = i === reached && !ended;
         return (
           <li key={step.status} className="relative flex gap-3 pb-6 last:pb-0">
-            {(i < STEPS.length - 1 || ended) && (
+            {(i < steps.length - 1 || ended) && (
               <span aria-hidden className={cn("absolute top-6 left-3 h-[calc(100%-1.5rem)] w-px -translate-x-1/2", i < reached ? "bg-green-700 dark:bg-green-500" : "bg-border")} />
             )}
             <span

@@ -6,18 +6,14 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useState } from "react";
 import { authClient } from "@/lib/auth-client";
+import { UserAvatar } from "@/components/user-avatar";
 import { cn } from "@/lib/utils";
-
-function initials(name: string) {
-  const words = name.trim().split(/\s+/).filter(Boolean);
-  return ((words[0]?.[0] ?? "") + (words.length > 1 ? (words.at(-1)?.[0] ?? "") : "")).toUpperCase();
-}
 
 const ITEM =
   "flex w-full items-center gap-2 rounded-md px-2 py-1.5 text-sm outline-none hover:bg-muted focus-visible:bg-muted";
 
 /** Header avatar that opens the account menu: sign in / create account for guests, account links once signed in. */
-export function UserMenu({ user }: { user: { name: string; email: string } | null }) {
+export function UserMenu({ user }: { user: { id: string; name: string; email: string } | null }) {
   const router = useRouter();
   const [open, setOpen] = useState(false);
   const close = () => setOpen(false);
@@ -27,22 +23,23 @@ export function UserMenu({ user }: { user: { name: string; email: string } | nul
       <Popover.Trigger
         aria-label={user ? `Account menu for ${user.name}` : "Account menu"}
         className={cn(
-          "flex size-8 items-center justify-center rounded-lg text-xs font-semibold outline-none select-none focus-visible:ring-3 focus-visible:ring-ring/50 data-popup-open:ring-2 data-popup-open:ring-green-700/40",
-          user
-            ? "bg-green-700 text-white hover:bg-green-800 dark:bg-green-600 dark:hover:bg-green-500"
-            : "bg-neutral-200 text-neutral-600 hover:bg-neutral-300 dark:bg-neutral-700 dark:text-neutral-300 dark:hover:bg-neutral-600",
+          "flex size-8 items-center justify-center rounded-full outline-none select-none focus-visible:ring-3 focus-visible:ring-ring/50 data-popup-open:ring-2 data-popup-open:ring-ring/60",
+          !user && "bg-neutral-200 text-neutral-600 hover:bg-neutral-300 dark:bg-neutral-700 dark:text-neutral-300 dark:hover:bg-neutral-600",
         )}
       >
-        {user ? initials(user.name) : <UserRound aria-hidden className="size-4" />}
+        {user ? <UserAvatar name={user.name} seed={user.id} /> : <UserRound aria-hidden className="size-4" />}
       </Popover.Trigger>
       <Popover.Portal>
         <Popover.Positioner side="bottom" align="end" sideOffset={8} className="z-[60]">
           <Popover.Popup className="w-60 origin-(--transform-origin) rounded-xl border bg-popover p-1.5 text-popover-foreground shadow-md outline-none transition-[opacity,scale] data-ending-style:scale-95 data-ending-style:opacity-0 data-starting-style:scale-95 data-starting-style:opacity-0 motion-reduce:transition-none">
             {user ? (
               <>
-                <div className="px-2 py-1.5">
-                  <p className="truncate text-sm font-medium">{user.name}</p>
-                  <p className="truncate text-xs text-muted-foreground">{user.email}</p>
+                <div className="flex items-center gap-2.5 px-2 py-1.5">
+                  <UserAvatar name={user.name} seed={user.id} size="md" />
+                  <div className="min-w-0">
+                    <p className="truncate text-sm font-medium">{user.name}</p>
+                    <p className="truncate text-xs text-muted-foreground">{user.email}</p>
+                  </div>
                 </div>
                 <div className="my-1 border-t" />
                 <Link href="/account/orders" className={ITEM} onClick={close}>
