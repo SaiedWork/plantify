@@ -2,12 +2,13 @@
 
 import { useCart } from '@/components/cart-provider';
 import { OrderTotals } from '@/components/order-totals';
+import { QuantityStepper } from '@/components/quantity-stepper';
 import { Button, buttonVariants } from '@/components/ui/button';
 import { formatPrice } from '@/lib/format';
 import { cn } from '@/lib/utils';
 import type { CartLine } from '@plantify/contracts';
 import { FREE_SHIPPING_THRESHOLD_CENTS, MAX_QTY_PER_LINE } from '@plantify/contracts';
-import { ArrowLeft, Minus, Plus, ShoppingCart, Trash2, Truck } from 'lucide-react';
+import { ArrowLeft, ShoppingCart, Trash2, Truck } from 'lucide-react';
 import Image from 'next/image';
 import Link from 'next/link';
 import { useState } from 'react';
@@ -84,35 +85,13 @@ function CartLineItem({ line }: { line: CartLine }) {
 					</p>
 				)}
 				<div className="mt-auto flex items-center justify-between gap-3">
-					<div
-						role="group"
-						aria-label={`Quantity for ${line.productName}`}
-						className="inline-flex items-center rounded-lg border"
-					>
-						<Button
-							variant="ghost"
-							size="icon-sm"
-							aria-label="Decrease quantity"
-							disabled={busy || soldOut || line.quantity <= 1}
-							onClick={() =>
-								run(() => setQuantity(line.variantId, Math.min(line.quantity - 1, max)))
-							}
-						>
-							<Minus className="size-3.5" />
-						</Button>
-						<span aria-live="polite" className="min-w-8 text-center text-sm tabular-nums">
-							{line.quantity}
-						</span>
-						<Button
-							variant="ghost"
-							size="icon-sm"
-							aria-label="Increase quantity"
-							disabled={busy || soldOut || line.quantity >= max}
-							onClick={() => run(() => setQuantity(line.variantId, line.quantity + 1))}
-						>
-							<Plus className="size-3.5" />
-						</Button>
-					</div>
+					<QuantityStepper
+						label={`Quantity for ${line.productName}`}
+						value={line.quantity}
+						max={max}
+						disabled={busy || soldOut}
+						onChange={(next) => run(() => setQuantity(line.variantId, Math.min(next, max)))}
+					/>
 					<Button
 						variant="ghost"
 						size="icon-sm"

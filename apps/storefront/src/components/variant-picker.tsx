@@ -1,6 +1,5 @@
 "use client";
 
-import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useState } from "react";
 import type { ProductVariantDetail } from "@plantify/contracts";
@@ -8,6 +7,7 @@ import { MAX_QTY_PER_LINE } from "@plantify/contracts";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { useCart } from "@/components/cart-provider";
+import { QuantityStepper } from "@/components/quantity-stepper";
 import { cn } from "@/lib/utils";
 import { formatPrice } from "@/lib/format";
 
@@ -79,27 +79,16 @@ export function VariantPicker({ variants, productName }: { variants: ProductVari
       </p>
 
       <div className="flex flex-wrap items-center gap-3 border-t pt-5">
-        <label className="flex items-center gap-2 text-sm">
-          Qty
-          <select
-            value={Math.min(quantity, maxQty)}
-            onChange={(e) => setQuantity(Number(e.target.value))}
-            disabled={selected.stock === 0}
-            className="h-9 rounded-lg border bg-background px-2 outline-none focus-visible:ring-3 focus-visible:ring-ring/50"
-          >
-            {Array.from({ length: maxQty }, (_, i) => i + 1).map((n) => (
-              <option key={n} value={n}>
-                {n}
-              </option>
-            ))}
-          </select>
-        </label>
+        <QuantityStepper
+          label={`Quantity for ${productName}`}
+          value={Math.min(quantity, maxQty)}
+          max={maxQty}
+          disabled={selected.stock === 0}
+          onChange={setQuantity}
+        />
         <Button size="lg" disabled={selected.stock === 0 || busy} onClick={addToCart}>
           {selected.stock === 0 ? "Sold out" : busy ? "Adding…" : "Add to cart"}
         </Button>
-        <Link href="/cart" className="text-sm underline">
-          View cart
-        </Link>
       </div>
     </div>
   );
