@@ -7,6 +7,7 @@ import request from 'supertest';
 import { AppModule } from './../src/app.module.js';
 import { configureApp } from './../src/configure-app.js';
 import { DB, type Db } from './../src/db/db.module.js';
+import { createHmac } from 'node:crypto';
 import { signOrderLink } from './../src/orders/guest-access.js';
 import { Jar } from './support.js';
 
@@ -213,5 +214,17 @@ describe('Guest checkout (e2e)', () => {
     const bare = session.header().split('; ').filter((c) => c.startsWith('better-auth')).join('; ');
     const res = await http().get('/api/demo-inbox').set('Cookie', bare);
     expect(res.body.messages.some((m: { otp?: string }) => m.otp)).toBe(true);
+  });
+
+  it('ignores an old-format inbox cookie that has no start time', async () => {
+    const first = await guestWithCart();
+    const email = newEmail();
+    await placeOrder(first, email);
+    // The format before sessions were scoped: just the address, which used to mean "everything".
+    const secret = process.env.BETTER_AUTH_SECRET!;
+    const value = encodeURIComponent(email);
+    const legacy = `${value}.${createHmac('sha256', secret).update(value).digest('hex')}`;
+    const res = await http().get('/api/demo-inbox').set('Cookie', `demo_inbox=${encodeURIComponent(legacy)}`).expect(200);
+    expect(res.body.messages).toEqual([]);
   });
 });

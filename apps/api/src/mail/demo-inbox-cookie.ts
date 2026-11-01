@@ -50,10 +50,10 @@ export function decodeInboxCookie(raw: string | undefined, secret: string): Inbo
   if (given.length !== expected.length || !timingSafeEqual(given, expected)) return [];
   return decodeURIComponent(value)
     .split(',')
-    .filter(Boolean)
-    .map((entry) => {
+    .flatMap((entry) => {
+      // Cookies from before sessions were scoped have no `|since`; they are dropped rather than trusted from time 0.
       const [email = '', since] = entry.split('|');
-      return { email, since: Number(since) || 0 };
+      return email && since !== undefined && Number.isFinite(Number(since)) ? [{ email, since: Number(since) }] : [];
     });
 }
 
