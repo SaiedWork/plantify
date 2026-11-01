@@ -10,7 +10,7 @@ type CartContextValue = {
   itemCount: number;
   add: (variantId: string, quantity?: number) => Promise<boolean>;
   setQuantity: (variantId: string, quantity: number) => Promise<void>;
-  remove: (variantId: string) => Promise<void>;
+  remove: (variantId: string) => Promise<boolean>;
   refresh: () => Promise<void>;
 };
 
@@ -58,9 +58,7 @@ export function CartProvider({ children }: { children: ReactNode }) {
       setQuantity: async (variantId, quantity) => {
         await mutate(() => api<CartView>(`/cart/items/${variantId}`, { method: "PATCH", json: { quantity } }));
       },
-      remove: async (variantId) => {
-        await mutate(() => api<CartView>(`/cart/items/${variantId}`, { method: "DELETE" }));
-      },
+      remove: (variantId) => mutate(() => api<CartView>(`/cart/items/${variantId}`, { method: "DELETE" })),
     }),
     [cart, mutate, refresh],
   );
