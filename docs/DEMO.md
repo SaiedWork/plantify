@@ -26,7 +26,7 @@ A guided tour of Plantify. Everything is fake: no real payments, no real email, 
 
 ## 2. Admin as owner (about 2 minutes)
 
-Open the admin app and click *Sign in as Owner*.
+Open the admin app, choose *Owner* and press *Sign in*.
 
 1. **Dashboard.** Revenue, orders and top products for the selected period. The order you just placed is in the numbers.
 2. **Orders.** Open your order. Move it through *Start processing → Mark as shipped → Mark as delivered* (one button per step), or refund it with the *restock* option.
@@ -37,7 +37,7 @@ Open the admin app and click *Sign in as Owner*.
 
 ## 3. Roles (about 1 minute)
 
-Sign out and click *Sign in as Catalog manager*, then try *Order manager*.
+Sign out (account menu at the bottom of the sidebar), choose *Catalog manager* and press *Sign in*, then try *Order manager*.
 
 - The catalog manager has *Products*, *Categories* and *Inventory* only. The order manager has *Orders* and *Customers* only.
 - Neither sees revenue. Each dashboard shows count cards for their own area: catalog and stock counts for the catalog manager, order pipeline and customer counts for the order manager.

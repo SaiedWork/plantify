@@ -36,7 +36,7 @@ Open the apps at these hostnames (not plain `localhost`) so the two apps' sessio
 - Storefront: http://storefront.localhost:3000
 - Admin: http://admin.localhost:3001
 
-Admin demo logins (password `plantify-demo`): `owner@plantify.test`, `catalog@plantify.test`, `orders@plantify.test`. The admin login page offers only these three one-click logins.
+Admin demo logins (password `plantify-demo`): `owner@plantify.test`, `catalog@plantify.test`, `orders@plantify.test`. The admin login page offers only these three: pick a role, then press Sign in.
 
 OTP codes appear in the in-app demo inbox, and in Mailpit when `SMTP_URL` is set.
 
