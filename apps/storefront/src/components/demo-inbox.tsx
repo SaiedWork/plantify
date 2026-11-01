@@ -24,26 +24,29 @@ type InboxContextValue = {
   open: () => void;
   /** Fetches the inbox now, e.g. right after a purchase, so the header dot appears without waiting for the next poll. */
   refresh: () => Promise<void>;
+  /** Empties the inbox for this browser, e.g. after signing in. Mail that arrives later shows up as usual. */
+  clear: () => Promise<void>;
   unread: number;
 };
 
-const InboxContext = createContext<InboxContextValue>({ open: () => {}, refresh: async () => {}, unread: 0 });
+const InboxContext = createContext<InboxContextValue>({ open: () => {}, refresh: async () => {}, clear: async () => {}, unread: 0 });
 export const useDemoInbox = () => useContext(InboxContext);
 
 const SEEN_KEY = "plantify:inbox-seen";
+const CLEARED_KEY = "plantify:inbox-cleared";
 const NEVER = new Date(0).toISOString();
 
-function readSeen() {
+function readKey(key: string) {
   try {
-    return localStorage.getItem(SEEN_KEY);
+    return localStorage.getItem(key);
   } catch {
     return null;
   }
 }
 
-function writeSeen(value: string) {
+function writeKey(key: string, value: string) {
   try {
-    localStorage.setItem(SEEN_KEY, value);
+    localStorage.setItem(key, value);
   } catch {
     // private mode: the dot just comes back after a reload
   }
@@ -58,6 +61,9 @@ export function DemoInboxProvider({ children }: { children: ReactNode }) {
   // Newest message this browser has opened the inbox for; anything newer counts as unread.
   const seenRef = useRef<string | null>(null);
   const latestRef = useRef<string | null>(null);
+  // Mail up to this moment is hidden ("cleared"); the rows stay in the database, only this browser stops listing them.
+  const clearedRef = useRef<string | null>(null);
+  const newestRawRef = useRef<string | null>(null);
   const openRef = useRef(false);
   const [unread, setUnread] = useState(0);
 
@@ -65,15 +71,18 @@ export function DemoInboxProvider({ children }: { children: ReactNode }) {
     try {
       const res = await fetch("/api/demo-inbox", { cache: "no-store" });
       if (!res.ok) return;
-      const list: Message[] = (await res.json()).messages;
+      const all: Message[] = (await res.json()).messages;
+      newestRawRef.current = all[0]?.createdAt ?? null;
+      const cleared = (clearedRef.current ??= readKey(CLEARED_KEY) ?? NEVER);
+      const list = all.filter((m) => m.createdAt > cleared);
       setMessages(list);
       const newest = list[0]?.createdAt ?? null;
       latestRef.current = newest;
       // First visit ever: mail that already exists is not "new".
-      let seen = seenRef.current ?? readSeen() ?? newest ?? NEVER;
+      let seen = seenRef.current ?? readKey(SEEN_KEY) ?? newest ?? NEVER;
       if (openRef.current && newest) seen = newest;
       seenRef.current = seen;
-      writeSeen(seen);
+      writeKey(SEEN_KEY, seen);
       setUnread(list.filter((m) => m.createdAt > seen).length);
     } catch {
       // transient network error: the next poll retries
@@ -97,10 +106,22 @@ export function DemoInboxProvider({ children }: { children: ReactNode }) {
     openRef.current = true;
     if (latestRef.current) {
       seenRef.current = latestRef.current;
-      writeSeen(latestRef.current);
+      writeKey(SEEN_KEY, latestRef.current);
     }
     setUnread(0);
     setOpen(true);
+  }
+
+  async function clear() {
+    // Fetch first so the mail that was just sent (the sign-in code) is cleared too.
+    await load();
+    if (newestRawRef.current) {
+      clearedRef.current = newestRawRef.current;
+      writeKey(CLEARED_KEY, newestRawRef.current);
+    }
+    setMessages([]);
+    setSelected(null);
+    setUnread(0);
   }
 
   function onOpenChange(next: boolean) {
@@ -111,7 +132,7 @@ export function DemoInboxProvider({ children }: { children: ReactNode }) {
   const current = messages.find((m) => m.id === selected);
 
   return (
-    <InboxContext.Provider value={{ open: openInbox, refresh: load, unread }}>
+    <InboxContext.Provider value={{ open: openInbox, refresh: load, clear, unread }}>
       {children}
       <Sheet open={isOpen} onOpenChange={onOpenChange}>
         <SheetContent className="w-full overflow-y-auto sm:max-w-md">

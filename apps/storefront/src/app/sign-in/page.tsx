@@ -28,7 +28,9 @@ function SignInForm() {
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  function done() {
+  async function done() {
+    // The sign-in code and any earlier guest mail are no longer needed.
+    await inbox.clear();
     router.push(next);
     router.refresh();
   }
