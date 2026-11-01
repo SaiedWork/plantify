@@ -55,5 +55,5 @@ The cron resets data once `meta.last_reset_at` is 7 days old. To force it: `POST
 1. Deploy the API first, then the two Next apps; open `<API_URL>/api/health`.
 2. Seed the empty database once: `DATABASE_URL=<direct url> pnpm db:seed` (or call the reset endpoint with `force=1`).
 3. Storefront: sign up, read the OTP in the demo inbox, add to cart, pay with the demo card, see order and invoice.
-4. Admin: sign in as owner, catalog manager and order manager, check permissions, upload a product image (Blob), register a webhook endpoint and confirm delivery.
+4. Admin: sign in as owner, catalog manager and order manager, check permissions, upload a product image (Blob), send a test event to the built-in Plantify Echo endpoint, optionally register your own webhook URL, and confirm delivery.
 5. Trigger the reset endpoint and confirm the wipe, reseed, Blob cleanup and banner countdown.

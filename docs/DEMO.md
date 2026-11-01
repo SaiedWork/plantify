@@ -31,7 +31,7 @@ Open the admin app, choose *Owner* and press *Sign in*.
 1. **Dashboard.** Revenue, orders and top products for the selected period. The order you just placed is in the numbers.
 2. **Orders.** Open your order. Move it through *Start processing → Mark as shipped → Mark as delivered* (one button per step), or refund it with the *restock* option.
 3. **Inventory.** The paid order wrote a *sale* row in the stock ledger. Open the variant's movements, then add a restock.
-4. **Webhooks.** Add an endpoint (for example a https://webhook.site URL), then trigger an order event and watch the signed delivery appear in the delivery log; failed deliveries can be retried.
+4. **Webhooks.** Open the built-in "Plantify Echo" endpoint, press Send test (or place an order) and watch the signed delivery appear in the delivery log. Optionally add your own endpoint (for example a https://webhook.site URL) from the Add endpoint button; failed deliveries can be retried.
 5. **Staff & roles.** The owner is fixed; the catalog manager and order manager always hold one role each, so picking a role for one swaps it with the other. It takes effect on their next request.
 6. **Audit log.** Every staff action above is recorded with who did it.
 
