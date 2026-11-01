@@ -41,7 +41,7 @@ export function VariantPicker({ variants, productName }: { variants: ProductVari
 
   return (
     <div className="space-y-4">
-      <p className="text-2xl font-semibold">{formatPrice(selected.priceCents)}</p>
+      <p className="text-3xl font-semibold tracking-tight">{formatPrice(selected.priceCents)}</p>
 
       <fieldset className="space-y-2">
         <legend className="text-sm font-medium">Size</legend>
@@ -56,8 +56,8 @@ export function VariantPicker({ variants, productName }: { variants: ProductVari
               }}
               aria-pressed={v.id === selectedId}
               className={cn(
-                "rounded-lg border px-3 py-2 text-left text-sm hover:bg-muted",
-                v.id === selectedId && "border-green-800 bg-green-50 ring-1 ring-green-800",
+                "rounded-lg border px-3.5 py-2 text-left text-sm outline-none hover:bg-muted focus-visible:ring-3 focus-visible:ring-ring/50",
+                v.id === selectedId && "border-green-700 bg-green-50 ring-1 ring-green-700 hover:bg-green-50 dark:border-green-500 dark:bg-green-950 dark:ring-green-500 dark:hover:bg-green-950",
                 v.stock === 0 && "text-muted-foreground line-through",
               )}
             >
@@ -68,18 +68,24 @@ export function VariantPicker({ variants, productName }: { variants: ProductVari
         </div>
       </fieldset>
 
-      <p className={cn("text-sm", selected.stock === 0 ? "text-destructive" : selected.stock <= selected.lowStockThreshold ? "text-amber-700" : "text-green-800")}>
+      <p
+        className={cn(
+          "flex items-center gap-2 text-sm",
+          selected.stock === 0 ? "text-destructive" : selected.stock <= selected.lowStockThreshold ? "text-amber-700 dark:text-amber-400" : "text-green-800 dark:text-green-400",
+        )}
+      >
+        <span aria-hidden className="size-2 rounded-full bg-current" />
         {stockNote}
       </p>
 
-      <div className="flex flex-wrap items-center gap-3">
+      <div className="flex flex-wrap items-center gap-3 border-t pt-5">
         <label className="flex items-center gap-2 text-sm">
           Qty
           <select
             value={Math.min(quantity, maxQty)}
             onChange={(e) => setQuantity(Number(e.target.value))}
             disabled={selected.stock === 0}
-            className="h-9 rounded-lg border bg-background px-2"
+            className="h-9 rounded-lg border bg-background px-2 outline-none focus-visible:ring-3 focus-visible:ring-ring/50"
           >
             {Array.from({ length: maxQty }, (_, i) => i + 1).map((n) => (
               <option key={n} value={n}>
