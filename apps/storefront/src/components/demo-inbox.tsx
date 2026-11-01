@@ -3,6 +3,7 @@
 import { createContext, useCallback, useContext, useEffect, useRef, useState, type ReactNode } from "react";
 import { ArrowLeft, Inbox, Mail } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { authClient } from "@/lib/auth-client";
 import {
   Sheet,
   SheetContent,
@@ -36,17 +37,20 @@ const SEEN_KEY = "plantify:inbox-seen";
 const CLEARED_KEY = "plantify:inbox-cleared";
 const NEVER = new Date(0).toISOString();
 
-function readKey(key: string) {
+/** Signed-in customers keep their markers across visits; a guest's live in sessionStorage and go with the tab. */
+type Kind = "local" | "session";
+
+function readKey(kind: Kind, key: string) {
   try {
-    return localStorage.getItem(key);
+    return (kind === "local" ? localStorage : sessionStorage).getItem(key);
   } catch {
     return null;
   }
 }
 
-function writeKey(key: string, value: string) {
+function writeKey(kind: Kind, key: string, value: string) {
   try {
-    localStorage.setItem(key, value);
+    (kind === "local" ? localStorage : sessionStorage).setItem(key, value);
   } catch {
     // private mode: the dot just comes back after a reload
   }
@@ -65,38 +69,52 @@ export function DemoInboxProvider({ children }: { children: ReactNode }) {
   const clearedRef = useRef<string | null>(null);
   const newestRawRef = useRef<string | null>(null);
   const openRef = useRef(false);
+  const { data: session, isPending } = authClient.useSession();
+  const kind: Kind = session ? "local" : "session";
+  // Null until the session is known, so nothing is read from or written to the wrong storage.
+  const kindRef = useRef<Kind | null>(null);
   const [unread, setUnread] = useState(0);
 
   const load = useCallback(async () => {
+    const kind = kindRef.current;
+    if (!kind) return;
     try {
       const res = await fetch("/api/demo-inbox", { cache: "no-store" });
       if (!res.ok) return;
       const all: Message[] = (await res.json()).messages;
       newestRawRef.current = all[0]?.createdAt ?? null;
-      const cleared = (clearedRef.current ??= readKey(CLEARED_KEY) ?? NEVER);
+      const cleared = (clearedRef.current ??= readKey(kind, CLEARED_KEY) ?? NEVER);
       const list = all.filter((m) => m.createdAt > cleared);
       setMessages(list);
       const newest = list[0]?.createdAt ?? null;
       latestRef.current = newest;
       // First visit ever: mail that already exists is not "new".
-      let seen = seenRef.current ?? readKey(SEEN_KEY) ?? newest ?? NEVER;
+      let seen = seenRef.current ?? readKey(kind, SEEN_KEY) ?? newest ?? NEVER;
       if (openRef.current && newest) seen = newest;
       seenRef.current = seen;
-      writeKey(SEEN_KEY, seen);
+      writeKey(kind, SEEN_KEY, seen);
       setUnread(list.filter((m) => m.createdAt > seen).length);
     } catch {
       // transient network error: the next poll retries
     }
   }, []);
 
+  // Signing in or out switches storage, so the markers are read again from the new one.
   useEffect(() => {
+    if (isPending) return;
+    kindRef.current = kind;
+    seenRef.current = null;
+    clearedRef.current = null;
     const first = setTimeout(() => void load(), 0);
+    return () => clearTimeout(first);
+  }, [isPending, kind, load]);
+
+  useEffect(() => {
     // Quick while the slide-over is open; slow (and only for a visible tab) while it is closed.
     const timer = setInterval(() => (isOpen || !document.hidden) && void load(), isOpen ? 2000 : 8000);
     const onFocus = () => void load();
     window.addEventListener("focus", onFocus);
     return () => {
-      clearTimeout(first);
       clearInterval(timer);
       window.removeEventListener("focus", onFocus);
     };
@@ -106,7 +124,7 @@ export function DemoInboxProvider({ children }: { children: ReactNode }) {
     openRef.current = true;
     if (latestRef.current) {
       seenRef.current = latestRef.current;
-      writeKey(SEEN_KEY, latestRef.current);
+      if (kindRef.current) writeKey(kindRef.current, SEEN_KEY, latestRef.current);
     }
     setUnread(0);
     setOpen(true);
@@ -117,7 +135,9 @@ export function DemoInboxProvider({ children }: { children: ReactNode }) {
     await load();
     if (newestRawRef.current) {
       clearedRef.current = newestRawRef.current;
-      writeKey(CLEARED_KEY, newestRawRef.current);
+      // Both: this runs just before the session flips from guest to signed in.
+      writeKey("session", CLEARED_KEY, newestRawRef.current);
+      writeKey("local", CLEARED_KEY, newestRawRef.current);
     }
     setMessages([]);
     setSelected(null);

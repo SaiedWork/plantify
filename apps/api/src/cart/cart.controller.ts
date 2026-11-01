@@ -2,7 +2,7 @@ import { Body, Controller, Delete, Get, Param, Patch, Post, Req, Res } from '@ne
 import { addCartItemSchema, updateCartItemSchema, type AddCartItemInput } from '@plantify/contracts';
 import type { Request, Response } from 'express';
 import { z } from 'zod';
-import { Public } from '../auth/access.js';
+import { OptionalAuth, type AuthedRequest } from '../auth/access.js';
 import { RateLimit } from '../common/rate-limit.js';
 import { ZodPipe } from '../common/zod-pipe.js';
 import { readCookie } from '../mail/demo-inbox-cookie.js';
@@ -11,8 +11,11 @@ import { CartService } from './cart.service.js';
 export const CART_COOKIE = 'plantify_cart';
 const UUID = z.string().uuid();
 
-/** Guest-friendly cart: identified by an unguessable httpOnly cookie, claimed by a user at checkout. */
-@Public()
+/**
+ * Guest-friendly cart: identified by an unguessable httpOnly cookie, claimed by a user at checkout. The cookie
+ * lasts 30 days for a signed-in user and only until the browser closes for a guest.
+ */
+@OptionalAuth()
 @RateLimit('cart')
 @Controller('cart')
 export class CartController {
@@ -24,15 +27,14 @@ export class CartController {
     return parsed.success && (await this.cart.cartExists(parsed.data)) ? parsed.data : null;
   }
 
-  private async ensureCartId(req: Request, res: Response) {
-    const existing = await this.existingCartId(req);
-    if (existing) return existing;
-    const id = await this.cart.create();
+  private async ensureCartId(req: AuthedRequest, res: Response) {
+    const id = (await this.existingCartId(req)) ?? (await this.cart.create());
+    // Re-issued on every change so signing in or out switches the cookie between persistent and session-long.
     res.cookie(CART_COOKIE, id, {
       httpOnly: true,
       sameSite: 'lax',
       path: '/',
-      maxAge: 30 * 24 * 60 * 60 * 1000,
+      ...(req.user ? { maxAge: 30 * 24 * 60 * 60 * 1000 } : {}),
       secure: process.env.NODE_ENV === 'production',
     });
     return id;
@@ -45,7 +47,7 @@ export class CartController {
 
   @Post('items')
   async add(
-    @Req() req: Request,
+    @Req() req: AuthedRequest,
     @Res({ passthrough: true }) res: Response,
     @Body(new ZodPipe(addCartItemSchema)) body: AddCartItemInput,
   ) {
@@ -56,7 +58,7 @@ export class CartController {
 
   @Patch('items/:variantId')
   async update(
-    @Req() req: Request,
+    @Req() req: AuthedRequest,
     @Res({ passthrough: true }) res: Response,
     @Param('variantId') variantId: string,
     @Body(new ZodPipe(updateCartItemSchema)) body: { quantity: number },
@@ -67,7 +69,7 @@ export class CartController {
   }
 
   @Delete('items/:variantId')
-  async remove(@Req() req: Request, @Res({ passthrough: true }) res: Response, @Param('variantId') variantId: string) {
+  async remove(@Req() req: AuthedRequest, @Res({ passthrough: true }) res: Response, @Param('variantId') variantId: string) {
     const cartId = await this.ensureCartId(req, res);
     await this.cart.setQuantity(cartId, variantId, 0, 'set');
     return this.cart.view(cartId);

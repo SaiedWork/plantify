@@ -152,4 +152,66 @@ describe('Guest checkout (e2e)', () => {
     const order = await http().get(`/api/orders/${orderId}`).set('Cookie', jar.header()).expect(200);
     expect(order.body.events.map((e: { status: string }) => e.status)).toEqual(['pending_payment', 'paid', 'shipped']);
   });
+
+  const hasLifetime = (res: { headers: Record<string, unknown> }, name: string) => {
+    const line = ((res.headers['set-cookie'] as string[] | undefined) ?? []).find((c) => c.startsWith(`${name}=`));
+    expect(line).toBeDefined();
+    return /max-age|expires/i.test(line!);
+  };
+
+  it('gives a guest session cookies that end when the browser closes', async () => {
+    const jar = new Jar();
+    const variantId = await variantWithStock(20);
+    const cart = await http().post('/api/cart/items').send({ variantId, quantity: 1 });
+    expect(hasLifetime(cart, 'plantify_cart')).toBe(false);
+    jar.absorb(cart);
+
+    const created = jar.absorb(await http().post('/api/checkout/orders').set('Cookie', jar.header()).send({ shippingAddress: ADDRESS, email: newEmail() }));
+    expect(hasLifetime(created, 'guest_orders')).toBe(false);
+    const paid = await http().post(`/api/checkout/orders/${created.body.orderId}/pay`).set('Cookie', jar.header()).send({ card: card('1234 5678 9') });
+    expect(hasLifetime(paid, 'demo_inbox')).toBe(false);
+  });
+
+  it('keeps a signed-in customer cart cookie for 30 days', async () => {
+    const email = newEmail();
+    const account = new Jar();
+    account.absorb(await http().post('/api/auth/sign-up/email').send({ name: 'Guest Buyer', email, password: 'correct-horse-9' }));
+    const otp = (await http().get('/api/demo-inbox').set('Cookie', account.header())).body.messages.find((m: { otp?: string }) => m.otp).otp as string;
+    account.absorb(await http().post('/api/auth/email-otp/verify-email').send({ email, otp }));
+
+    const variantId = await variantWithStock(20);
+    const cart = await http().post('/api/cart/items').set('Cookie', account.header()).send({ variantId, quantity: 1 });
+    expect(hasLifetime(cart, 'plantify_cart')).toBe(true);
+  });
+
+  it('does not show a new guest session the mail an earlier session left for the same address', async () => {
+    const first = await guestWithCart();
+    const email = newEmail();
+    const { orderId } = await placeOrder(first, email);
+    expect((await inbox(first)).length).toBeGreaterThan(0);
+    const { rows } = await db.execute<{ number: string }>(sql`select number from "order" where id = ${orderId}`);
+    // The first session ended long ago.
+    await db.execute(sql`update demo_email set created_at = now() - interval '1 hour' where "to" = ${email}`);
+
+    const second = new Jar();
+    second.absorb(await http().post('/api/orders/track/request-link').set('Cookie', second.header()).send({ orderNumber: rows[0]!.number, email }));
+    const seen = await inbox(second);
+    expect(seen).toHaveLength(1);
+    expect(seen[0]!.subject).toContain(`Your link to order ${rows[0]!.number}`);
+  });
+
+  it('shows a signed-in customer everything sent to their address, with no cookie needed', async () => {
+    const email = newEmail();
+    const account = new Jar();
+    account.absorb(await http().post('/api/auth/sign-up/email').send({ name: 'Guest Buyer', email, password: 'correct-horse-9' }));
+    const otp = (await http().get('/api/demo-inbox').set('Cookie', account.header())).body.messages.find((m: { otp?: string }) => m.otp).otp as string;
+    await http().post('/api/auth/email-otp/verify-email').send({ email, otp }).expect(200);
+    await db.execute(sql`update demo_email set created_at = now() - interval '1 hour' where "to" = ${email}`);
+
+    const session = new Jar();
+    session.absorb(await http().post('/api/auth/sign-in/email').send({ email, password: 'correct-horse-9' }));
+    const bare = session.header().split('; ').filter((c) => c.startsWith('better-auth')).join('; ');
+    const res = await http().get('/api/demo-inbox').set('Cookie', bare);
+    expect(res.body.messages.some((m: { otp?: string }) => m.otp)).toBe(true);
+  });
 });

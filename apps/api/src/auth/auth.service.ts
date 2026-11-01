@@ -8,7 +8,14 @@ import { APIError, createAuthMiddleware } from 'better-auth/api';
 import { emailOTP } from 'better-auth/plugins';
 import { requireEnv } from '../env.js';
 import { InjectDb, type Db } from '../db/db.module.js';
-import { DEMO_INBOX_COOKIE, decodeInboxCookie, encodeInboxCookie, readCookie } from '../mail/demo-inbox-cookie.js';
+import {
+  DEMO_INBOX_COOKIE,
+  INBOX_COOKIE_OPTIONS,
+  decodeInboxCookie,
+  encodeInboxCookie,
+  readCookie,
+  withInboxGrant,
+} from '../mail/demo-inbox-cookie.js';
 import { MailService } from '../mail/mail.service.js';
 
 // Requests that cause an email to be "sent"; the address gets added to this browser's demo-inbox cookie.
@@ -84,15 +91,7 @@ function createAuth(db: Db, mail: MailService) {
         const email = (ctx.body as { email?: unknown } | undefined)?.email;
         if (typeof email !== 'string' || !MAIL_TRIGGER_PATHS.includes(ctx.path)) return;
         const current = decodeInboxCookie(readCookie(ctx.headers?.get('cookie') ?? undefined, DEMO_INBOX_COOKIE), secret);
-        const normalized = email.toLowerCase();
-        const emails = [...current.filter((e) => e !== normalized), normalized];
-        ctx.setCookie(DEMO_INBOX_COOKIE, encodeInboxCookie(emails, secret), {
-          httpOnly: true,
-          sameSite: 'lax',
-          path: '/',
-          maxAge: 60 * 60,
-          secure: process.env.NODE_ENV === 'production',
-        });
+        ctx.setCookie(DEMO_INBOX_COOKIE, encodeInboxCookie(withInboxGrant(current, email), secret), INBOX_COOKIE_OPTIONS);
       }),
     },
   });

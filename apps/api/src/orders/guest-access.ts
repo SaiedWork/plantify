@@ -11,7 +11,6 @@ import { readCookie } from '../mail/demo-inbox-cookie.js';
  */
 export const GUEST_ORDERS_COOKIE = 'guest_orders';
 const MAX_ORDERS = 5;
-const DAY_MS = 24 * 60 * 60 * 1000;
 
 const sign = (value: string) => createHmac('sha256', requireEnv('BETTER_AUTH_SECRET')).update(value).digest('hex');
 
@@ -30,14 +29,13 @@ export function readGuestOrderIds(req: Request): string[] {
   return value.split(',').filter(Boolean);
 }
 
-/** Remembers an order this browser created as a guest, for 24 hours. */
+/** Remembers an order this browser created as a guest, until the browser closes (a session cookie). */
 export function grantGuestOrder(req: Request, res: Response, orderId: string) {
   const ids = [...readGuestOrderIds(req).filter((id) => id !== orderId), orderId].slice(-MAX_ORDERS).join(',');
   res.cookie(GUEST_ORDERS_COOKIE, `${ids}.${sign(ids)}`, {
     httpOnly: true,
     sameSite: 'lax',
     path: '/',
-    maxAge: DAY_MS,
     secure: process.env.NODE_ENV === 'production',
   });
 }
