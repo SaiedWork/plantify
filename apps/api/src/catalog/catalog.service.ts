@@ -23,6 +23,8 @@ type ListRow = {
   min_price: number;
   max_price: number;
   in_stock: boolean;
+  default_variant_id: string;
+  default_variant_label: string;
   total: string;
 };
 
@@ -86,6 +88,10 @@ export class CatalogService {
           (select i.url from product_image i where i.product_id = p.id order by i.position limit 1) as image_url,
           min(v.price_cents) as min_price, max(v.price_cents) as max_price,
           coalesce(sum(l.on_hand), 0) > 0 as in_stock,
+          (select v2.id from product_variant v2 left join inventory_level l2 on l2.variant_id = v2.id
+            where v2.product_id = p.id order by coalesce(l2.on_hand, 0) > 0 desc, v2.price_cents limit 1) as default_variant_id,
+          (select v2.label from product_variant v2 left join inventory_level l2 on l2.variant_id = v2.id
+            where v2.product_id = p.id order by coalesce(l2.on_hand, 0) > 0 desc, v2.price_cents limit 1) as default_variant_label,
           ${rank} as rank
         from product p
         join category c on c.id = p.category_id
@@ -110,6 +116,7 @@ export class CatalogService {
         minPriceCents: r.min_price,
         maxPriceCents: r.max_price,
         inStock: r.in_stock,
+        defaultVariant: { id: r.default_variant_id, label: r.default_variant_label },
       })),
       total: rows[0] ? Number(rows[0].total) : 0,
       page,

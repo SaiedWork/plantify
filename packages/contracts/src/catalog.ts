@@ -40,6 +40,8 @@ export type ProductListItem = {
   minPriceCents: number;
   maxPriceCents: number;
   inStock: boolean;
+  /** What the quick "Add to cart" on a card adds: the cheapest variant that is in stock (else the cheapest). */
+  defaultVariant: { id: string; label: string };
 };
 
 export type ProductList = {
@@ -59,7 +61,7 @@ export type ProductVariantDetail = {
   lowStockThreshold: number;
 };
 
-export type ProductDetail = Omit<ProductListItem, 'imageUrl' | 'minPriceCents' | 'maxPriceCents' | 'inStock'> & {
+export type ProductDetail = Omit<ProductListItem, 'imageUrl' | 'minPriceCents' | 'maxPriceCents' | 'inStock' | 'defaultVariant'> & {
   images: { url: string; alt: string }[];
   variants: ProductVariantDetail[];
 };

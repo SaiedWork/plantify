@@ -119,63 +119,66 @@ async function Results({ searchParams }: { searchParams: Promise<Params> }) {
 
   return (
     <div className="grid gap-4 md:grid-cols-[200px_1fr] md:gap-10">
-      <aside className="hidden md:block">
+      <aside className="hidden md:sticky md:top-24 md:block md:max-h-[calc(100dvh-7rem)] md:self-start md:overflow-y-auto">
         <Filters current={current} categories={categories} />
       </aside>
-      <details className="group rounded-xl border bg-card md:hidden">
-        <summary className="flex cursor-pointer list-none items-center justify-between px-4 py-2.5 text-sm font-medium [&::-webkit-details-marker]:hidden">
-          <span className="flex items-center gap-2">
-            <SlidersHorizontal aria-hidden className="size-4" /> Filters
-            {activeCount > 0 && (
-              <span className="rounded-full bg-green-700 px-1.5 text-xs text-white dark:bg-green-600">{activeCount}</span>
-            )}
-          </span>
-          <ChevronDown aria-hidden className="size-4 transition-transform group-open:rotate-180" />
-        </summary>
-        <div className="border-t p-4">
-          <Filters current={current} categories={categories} />
-        </div>
-      </details>
 
       <div className="space-y-4">
-        <div className="flex flex-wrap items-center justify-between gap-2">
-          <p className="text-sm text-muted-foreground">
-            {products.total} {products.total === 1 ? "product" : "products"}
-            {current.q ? ` for “${current.q}”` : ""}
-          </p>
-          <div className="flex flex-wrap gap-1 text-sm">
-            {SORTS.filter(([value]) => value !== "relevance" || current.q).map(([value, label]) => (
-              <Link
-                key={value}
-                href={href(current, { sort: value })}
-                className={cn(
-                  "rounded-full border px-3 py-1 text-xs hover:bg-muted",
-                  (current.sort ?? (current.q ? "relevance" : "name")) === value && "border-green-700 bg-green-50 font-medium text-green-900 dark:border-green-500 dark:bg-green-950 dark:text-green-200",
+        {/* Stays under the header while the products scroll beneath (the solid background hides them). On small screens the filters menu is part of it. */}
+        <div className="sticky top-[85px] z-20 -mx-1 space-y-2 bg-background px-1 py-3">
+          <details className="group rounded-xl border bg-card md:hidden">
+            <summary className="flex cursor-pointer list-none items-center justify-between px-4 py-2.5 text-sm font-medium [&::-webkit-details-marker]:hidden">
+              <span className="flex items-center gap-2">
+                <SlidersHorizontal aria-hidden className="size-4" /> Filters
+                {activeCount > 0 && (
+                  <span className="rounded-full bg-green-700 px-1.5 text-xs text-white dark:bg-green-600">{activeCount}</span>
                 )}
-              >
-                {label}
-              </Link>
-            ))}
+              </span>
+              <ChevronDown aria-hidden className="size-4 transition-transform group-open:rotate-180" />
+            </summary>
+            <div className="max-h-[60dvh] overflow-y-auto border-t p-4">
+              <Filters current={current} categories={categories} />
+            </div>
+          </details>
+          <div className="flex flex-wrap items-center justify-between gap-2">
+            <p className="text-sm text-muted-foreground">
+              {products.total} {products.total === 1 ? "product" : "products"}
+              {current.q ? ` for “${current.q}”` : ""}
+            </p>
+            <div className="flex flex-wrap gap-1 text-sm">
+              {SORTS.filter(([value]) => value !== "relevance" || current.q).map(([value, label]) => (
+                <Link
+                  key={value}
+                  href={href(current, { sort: value })}
+                  className={cn(
+                    "rounded-full border px-3 py-1 text-xs hover:bg-muted",
+                    (current.sort ?? (current.q ? "relevance" : "name")) === value && "border-green-700 bg-green-50 font-medium text-green-900 dark:border-green-500 dark:bg-green-950 dark:text-green-200",
+                  )}
+                >
+                  {label}
+                </Link>
+              ))}
+            </div>
           </div>
+  
+          {chips.length > 0 && (
+            <div className="flex flex-wrap items-center gap-2">
+              {chips.map((c) => (
+                <Link
+                  key={c.label}
+                  href={href(current, c.clear)}
+                  aria-label={`Remove filter ${c.label}`}
+                  className="inline-flex items-center gap-1 rounded-full bg-muted px-3 py-1 text-xs font-medium hover:bg-muted/70"
+                >
+                  {c.label} <X aria-hidden className="size-3" />
+                </Link>
+              ))}
+              <Link href="/shop" className="px-1 text-xs text-muted-foreground underline hover:text-foreground">
+                Clear all
+              </Link>
+            </div>
+          )}
         </div>
-
-        {chips.length > 0 && (
-          <div className="flex flex-wrap items-center gap-2">
-            {chips.map((c) => (
-              <Link
-                key={c.label}
-                href={href(current, c.clear)}
-                aria-label={`Remove filter ${c.label}`}
-                className="inline-flex items-center gap-1 rounded-full bg-muted px-3 py-1 text-xs font-medium hover:bg-muted/70"
-              >
-                {c.label} <X aria-hidden className="size-3" />
-              </Link>
-            ))}
-            <Link href="/shop" className="px-1 text-xs text-muted-foreground underline hover:text-foreground">
-              Clear all
-            </Link>
-          </div>
-        )}
 
         {products.items.length === 0 ? (
           <div className="rounded-xl border border-dashed p-12 text-center">
