@@ -8,9 +8,9 @@ export default function AccountLayout({ children }: { children: React.ReactNode 
       <div className="print:hidden">
         <AccountHeader />
       </div>
-      <div className="grid gap-8 md:grid-cols-[200px_1fr] print:block">
+      <div className="grid grid-cols-[minmax(0,1fr)] gap-8 md:grid-cols-[200px_minmax(0,1fr)] print:block">
         {/* Sticks below the banner and header (1.75rem + 3.5rem + border) so only the page content scrolls. */}
-        <div className="print:hidden md:sticky md:top-24 md:self-start">
+        <div className="min-w-0 print:hidden md:sticky md:top-24 md:self-start">
           <Suspense fallback={<div className="h-24" />}>
             <AccountNav />
           </Suspense>
