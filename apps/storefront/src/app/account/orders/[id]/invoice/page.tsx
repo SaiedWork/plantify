@@ -4,7 +4,7 @@ import Link from "next/link";
 import { useParams } from "next/navigation";
 import { Suspense } from "react";
 import type { OrderDetail } from "@plantify/contracts";
-import { Printer } from "lucide-react";
+import { ArrowLeft, Printer } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { InvoiceDocument } from "@/components/invoice-document";
 import { authClient } from "@/lib/auth-client";
@@ -31,8 +31,8 @@ function Invoice() {
   return (
     <div className="space-y-4">
       <div className="flex items-center justify-between print:hidden">
-        <Link href={`/account/orders/${order.id}`} className="text-sm text-muted-foreground hover:underline">
-          ← Back to order
+        <Link href={`/account/orders/${order.id}`} className="inline-flex items-center gap-1 text-sm text-muted-foreground hover:text-foreground">
+          <ArrowLeft aria-hidden className="size-4" /> Back to order
         </Link>
         <Button onClick={() => window.print()}>
           <Printer className="size-4" /> Print / Save as PDF
