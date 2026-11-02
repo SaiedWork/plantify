@@ -3,12 +3,13 @@
 import { useState, type SubmitEvent } from "react";
 import type { AddressView } from "@plantify/contracts";
 import { MAX_SAVED_ADDRESSES } from "@plantify/contracts";
-import { MapPin } from "lucide-react";
+import { MapPin, Pencil, Plus, Trash2 } from "lucide-react";
 import { toast } from "sonner";
 import { AddressFields, EMPTY_ADDRESS, toAddressPayload, type AddressValues } from "@/components/address-fields";
 import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
 import { ConfirmDialog } from "@/components/ui/confirm-dialog";
+import { FormDialog } from "@/components/ui/form-dialog";
 import { api, ApiError } from "@/lib/api-client";
 import { useApi } from "@/lib/use-api";
 
@@ -47,7 +48,7 @@ export default function AddressesPage() {
   async function onSave(e: SubmitEvent) {
     e.preventDefault();
     if (!editing) return;
-    const body = { ...toAddressPayload(editing.values), ...(editing.makeDefault ? { isDefault: true } : {}) };
+    const body = { ...toAddressPayload(editing.values), ...(editing.makeDefault && !defaultLocked ? { isDefault: true } : {}) };
     const ok = editing.id
       ? await run(() => api(`/addresses/${editing.id}`, { method: "PATCH", json: { ...body, line2: editing.values.line2.trim(), region: editing.values.region.trim() } }), "Address updated")
       : await run(() => api("/addresses", { method: "POST", json: body }), "Address saved");
@@ -55,50 +56,63 @@ export default function AddressesPage() {
   }
 
   const atLimit = (addresses?.length ?? 0) >= MAX_SAVED_ADDRESSES;
+  // The first address and the current default stay default; another address has to take over instead.
+  const defaultLocked = editing
+    ? editing.id
+      ? (addresses?.find((a) => a.id === editing.id)?.isDefault ?? false)
+      : (addresses?.length ?? 0) === 0
+    : false;
 
   return (
     <div className="space-y-4">
       <div className="flex items-center justify-between">
         <h2 className="text-2xl font-bold tracking-tight">Addresses</h2>
-        {!editing && (
-          <Button disabled={atLimit} onClick={() => setEditing({ id: null, values: EMPTY_ADDRESS, makeDefault: false })}>
-            Add address
-          </Button>
-        )}
+        <Button disabled={atLimit} onClick={() => setEditing({ id: null, values: EMPTY_ADDRESS, makeDefault: false })}>
+          <Plus aria-hidden /> Add address
+        </Button>
       </div>
 
-      {editing && (
-        <form onSubmit={onSave} className="space-y-4 rounded-xl border bg-card p-5">
-          <h3 className="font-semibold">{editing.id ? "Edit address" : "New address"}</h3>
-          <AddressFields value={editing.values} onChange={(values) => setEditing({ ...editing, values })} idPrefix="saved" />
-          <label className="flex w-fit items-center gap-2 text-sm">
-            <Checkbox checked={editing.makeDefault} onCheckedChange={(checked) => setEditing({ ...editing, makeDefault: checked === true })} />
-            Use as my default address
-          </label>
-          <div className="flex gap-2">
-            <Button type="submit" disabled={busy}>
-              Save address
-            </Button>
-            <Button type="button" variant="ghost" onClick={() => setEditing(null)}>
-              Cancel
-            </Button>
-          </div>
-        </form>
-      )}
+      <FormDialog open={editing !== null} onOpenChange={(open) => !open && setEditing(null)} title={editing?.id ? "Edit address" : "New address"}>
+        {editing && (
+          <form onSubmit={onSave} className="space-y-4">
+            <AddressFields
+              value={editing.values}
+              onChange={(values) => setEditing({ ...editing, values })}
+              idPrefix="saved"
+              zipAside={
+                <label className="flex w-fit items-center gap-2">
+                  <Checkbox
+                    checked={defaultLocked || editing.makeDefault}
+                    disabled={defaultLocked}
+                    onCheckedChange={(checked) => setEditing({ ...editing, makeDefault: checked === true })}
+                  />
+                  Use as default address
+                </label>
+              }
+            />
+            <div className="flex justify-end gap-2">
+              <Button type="button" variant="outline" onClick={() => setEditing(null)}>
+                Cancel
+              </Button>
+              <Button type="submit" disabled={busy}>
+                Save address
+              </Button>
+            </div>
+          </form>
+        )}
+      </FormDialog>
 
       {loading ? (
         <div className="h-32 animate-pulse rounded-xl bg-muted" />
       ) : !addresses || addresses.length === 0 ? (
-        !editing && (
-          <div className="flex flex-col items-center gap-2 rounded-xl border border-dashed p-10 text-center text-sm text-muted-foreground">
-            <MapPin aria-hidden className="size-8" />
-            <p>No saved addresses yet.</p>
-          </div>
-        )
+        <div className="flex flex-col items-center gap-2 rounded-xl border border-dashed p-10 text-center text-sm text-muted-foreground">
+          <MapPin aria-hidden className="size-8" />
+          <p>No saved addresses yet.</p>
+        </div>
       ) : (
         <ul className="grid gap-3 sm:grid-cols-2">
           {addresses.map((a) => (
-            <li key={a.id} className="rounded-xl border bg-card p-5 text-sm">
+            <li key={a.id} className="flex flex-col rounded-xl border bg-card p-5 text-sm">
               <div className="mb-1 flex items-center gap-2">
                 <p className="font-medium">{a.fullName}</p>
                 {a.isDefault && <span className="rounded-full bg-green-100 px-2 py-0.5 text-xs text-green-900 dark:bg-green-950 dark:text-green-200">Default</span>}
@@ -109,27 +123,26 @@ export default function AddressesPage() {
                 {a.city}
                 {a.region ? `, ${a.region}` : ""} {a.postalCode}
               </p>
-              <div className="mt-3 flex flex-wrap gap-1">
-                <Button variant="outline" size="sm" onClick={() => setEditing({ id: a.id, values: toValues(a), makeDefault: false })}>
-                  Edit
-                </Button>
-                {!a.isDefault && (
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    disabled={busy}
-                    onClick={() => run(() => api(`/addresses/${a.id}`, { method: "PATCH", json: { isDefault: true } }), "Default address updated")}
-                  >
-                    Make default
-                  </Button>
-                )}
+              <div className="mt-auto flex justify-end gap-1 pt-3">
                 <Button
                   variant="ghost"
-                  size="sm"
+                  size="icon-sm"
+                  aria-label={`Edit address for ${a.fullName}`}
+                  title="Edit"
+                  onClick={() => setEditing({ id: a.id, values: toValues(a), makeDefault: false })}
+                >
+                  <Pencil aria-hidden />
+                </Button>
+                <Button
+                  variant="ghost"
+                  size="icon-sm"
+                  className="hover:text-destructive"
+                  aria-label={`Delete address for ${a.fullName}`}
+                  title="Delete"
                   disabled={busy}
                   onClick={() => setDeleting(a)}
                 >
-                  Delete
+                  <Trash2 aria-hidden />
                 </Button>
               </div>
             </li>
