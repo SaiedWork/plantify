@@ -1,6 +1,6 @@
 # Deploying Plantify (Vercel + Neon)
 
-Status: configured, **not deployed yet** (decision: deploy after the final UX/UI pass, milestone 10 in [PLAN.md](PLAN.md)). The production paths below have never run on Vercel or Neon, so expect to fix small things during the first deploy.
+Status: **deployed** after the final UX/UI pass (milestone 10 in [PLAN.md](PLAN.md)) and smoke-tested on Vercel and Neon: API `https://plantify-api.vercel.app`, storefront `https://plantify-storefront.vercel.app`, admin `https://admin-plantify.vercel.app`. The pitfalls hit on the first deploy are in section 6.
 
 Three Vercel projects from this one repo, one Neon database, all on free tiers (no card needed).
 
@@ -50,10 +50,20 @@ Leave `SMTP_URL` unset: mail goes to the DB-backed demo inbox. Do not set `AUTH_
 
 The cron resets data once `meta.last_reset_at` is 7 days old. To force it: `POST <API_URL>/api/internal/reset?force=1` with `Authorization: Bearer $CRON_SECRET`, or run the "Reset demo data" GitHub workflow (needs a `DATABASE_URL` repository secret set to the Neon direct URL).
 
-## 5. First-deploy smoke test
+## 5. Smoke test
 
 1. Deploy the API first, then the two Next apps; open `<API_URL>/api/health`.
 2. Seed the empty database once: `DATABASE_URL=<direct url> pnpm db:seed` (or call the reset endpoint with `force=1`).
 3. Storefront: sign up, read the OTP in the demo inbox, add to cart, pay with the demo card, see order and invoice.
 4. Admin: sign in as owner, catalog manager and order manager, check permissions, upload a product image (Blob), send a test event to the built-in Plantify Echo endpoint, optionally register your own webhook URL, and confirm delivery.
 5. Trigger the reset endpoint and confirm the wipe, reseed, Blob cleanup and banner countdown.
+
+## 6. First-deploy pitfalls
+
+- **Build-time env vars must be declared in `turbo.json`.** Vercel builds the Next apps through Turborepo, whose strict env mode strips undeclared variables. `API_URL` (read by `rewrites()` in `next.config.ts` at build time) and `NEXT_PUBLIC_STOREFRONT_URL` are listed under the `build` task; without that the rewrite fell back to `localhost:4000` and every `/api/*` call returned 404 with `x-vercel-error: DNS_HOSTNAME_RESOLVED_PRIVATE`. Changing these variables needs a redeploy. The "missing from turbo.json" warnings Vercel prints for the API's runtime variables are harmless.
+- **Neon integration**: turn **Neon Auth** off (Better Auth is the only auth), leave the custom prefix empty so the variables are named `DATABASE_URL` / `DATABASE_URL_UNPOOLED`, connect Production only, and create a fresh database (the reset truncates every table of the database it points at). Delete any `DATABASE_URL*` variable you imported by hand first; the integration refuses to overwrite existing names.
+- **Vercel Blob**: create a **Public** store, connect it to `plantify-api` with an empty prefix and tick "Add a read-write token env var" (the code reads `BLOB_READ_WRITE_TOKEN`). Remove any hand-made `BLOB_READ_WRITE_TOKEN` first, for the same clash reason.
+- **Secret variables look empty.** Vercel's Secret type is write-only: the edit box is blank after saving even though the value is stored. Cancel instead of saving blank. Empty values in an imported `.env` file are really empty.
+- **Import settings**: pick "Import single project" per app (not Services), set the Root Directory (`apps/api`, `apps/storefront`, `apps/admin`) and, for the API, preset `Other` (it is auto-detected as Vite). Set the Node.js version to 22.x in each project (Settings, Build and Deployment); `engines` is `>=22`, so Vercel otherwise picks the newest.
+- **CI**: `pnpm typecheck` runs `next typegen` first in both Next apps, because `LayoutProps` is a generated global type that does not exist on a fresh checkout.
+- Scope `DATABASE_URL*` and `CRON_SECRET` to Production so previews never touch the production database.
