@@ -37,8 +37,12 @@ export class CatalogService {
       name: string;
       description: string | null;
       product_count: string;
+      image_url: string | null;
     }>(sql`
-      select c.id, c.slug, c.name, c.description, count(p.id) filter (where p.status = 'active') as product_count
+      select c.id, c.slug, c.name, c.description, count(p.id) filter (where p.status = 'active') as product_count,
+        (select i.url from product p2 join product_image i on i.product_id = p2.id
+          where p2.category_id = c.id and p2.status = 'active'
+          order by p2.featured desc, p2.name, i.position limit 1) as image_url
       from category c left join product p on p.category_id = c.id
       group by c.id order by c.sort_order, c.name`);
     return rows.map((r) => ({
@@ -47,6 +51,7 @@ export class CatalogService {
       name: r.name,
       description: r.description,
       productCount: Number(r.product_count),
+      imageUrl: r.image_url,
     }));
   }
 

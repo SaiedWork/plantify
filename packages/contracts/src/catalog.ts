@@ -26,6 +26,8 @@ export type CategorySummary = {
   name: string;
   description: string | null;
   productCount: number;
+  /** A picture of one of the category's plants (featured first), for the landing page tile. */
+  imageUrl: string | null;
 };
 
 export type ProductListItem = {
