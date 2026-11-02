@@ -4,17 +4,14 @@ import Link from "next/link";
 import { useParams } from "next/navigation";
 import { Suspense, useState } from "react";
 import type { TrackedOrder } from "@plantify/contracts";
-import { ArrowLeft, FileText } from "lucide-react";
+import { ArrowLeft } from "lucide-react";
 import { toast } from "sonner";
-import { Button, buttonVariants } from "@/components/ui/button";
+import { Button } from "@/components/ui/button";
 import { ConfirmDialog } from "@/components/ui/confirm-dialog";
-import { OrderItemRow } from "@/components/order-item-row";
+import { OrderOverview } from "@/components/order-overview";
 import { OrderStatusBadge } from "@/components/order-status-badge";
-import { OrderTimeline } from "@/components/order-timeline";
-import { OrderTotals } from "@/components/order-totals";
 import { api, ApiError } from "@/lib/api-client";
 import { formatDate } from "@/lib/format";
-import { cn } from "@/lib/utils";
 import { useApi } from "@/lib/use-api";
 
 function OrderView() {
@@ -49,7 +46,6 @@ function OrderView() {
     );
   }
 
-  const a = order.shippingAddress;
   return (
     <div className="space-y-6">
       <div className="space-y-2">
@@ -63,75 +59,17 @@ function OrderView() {
         <p className="text-sm text-muted-foreground">Placed {formatDate(order.placedAt)}</p>
       </div>
 
-      <div className="grid gap-6 lg:grid-cols-[3fr_2fr]">
-        <section aria-labelledby="items" className="rounded-xl border bg-card p-5">
-          <h3 id="items" className="mb-1 font-semibold">
-            Items
-          </h3>
-          <ul className="divide-y text-sm">
-            {order.items.map((i) => (
-              <OrderItemRow key={i.sku} item={i} />
-            ))}
-          </ul>
-          <div className="mt-3 border-t pt-4">
-            <OrderTotals totals={order} />
-          </div>
-        </section>
-
-        <section aria-labelledby="progress" className="h-fit rounded-xl border bg-card p-5">
-          <h3 id="progress" className="mb-4 font-semibold">
-            Delivery status
-          </h3>
-          <OrderTimeline status={order.status} events={order.events} />
-        </section>
-      </div>
-
-      <div className="grid gap-4 sm:grid-cols-2">
-        <section className="rounded-xl border bg-card p-5 text-sm">
-          <h3 className="mb-2 font-semibold">Shipping to</h3>
-          <p className="font-medium">{a.fullName}</p>
-          <p className="text-muted-foreground">{a.line1}</p>
-          {a.line2 && <p className="text-muted-foreground">{a.line2}</p>}
-          <p className="text-muted-foreground">
-            {a.city}
-            {a.region ? `, ${a.region}` : ""} {a.postalCode}
-          </p>
-        </section>
-        <section className="rounded-xl border bg-card p-5 text-sm">
-          <h3 className="mb-2 font-semibold">Payment</h3>
-          {order.payment ? (
-            <>
-              <p className="capitalize">
-                {order.payment.status}
-                {order.payment.cardLast4 && ` · ${order.payment.cardBrand} ending ${order.payment.cardLast4}`}
-              </p>
-              {order.payment.failureReason && order.payment.status === "failed" && (
-                <p className="text-muted-foreground">Reason: {order.payment.failureReason.replace(/_/g, " ")}</p>
-              )}
-            </>
-          ) : (
-            <p className="text-muted-foreground">No payment attempt yet.</p>
-          )}
-          {order.invoice && (
-            <p className="mt-2 text-muted-foreground">
-              Invoice <strong className="font-medium text-foreground">{order.invoice.number}</strong>
-            </p>
-          )}
-        </section>
-      </div>
-
-      <div className="flex flex-wrap gap-2">
-        {order.invoice && (
-          <Link href={`/account/orders/${order.id}/invoice`} className={cn(buttonVariants({ size: "lg" }))}>
-            <FileText aria-hidden /> View invoice
-          </Link>
-        )}
-        {order.status === "pending_payment" && (
-          <Button variant="outline" size="lg" disabled={busy} onClick={() => setConfirming(true)}>
-            Cancel order
-          </Button>
-        )}
-      </div>
+      <OrderOverview
+        order={order}
+        invoiceHref={`/account/orders/${order.id}/invoice`}
+        actions={
+          order.status === "pending_payment" && (
+            <Button variant="outline" size="lg" className="w-full" disabled={busy} onClick={() => setConfirming(true)}>
+              Cancel order
+            </Button>
+          )
+        }
+      />
 
       <ConfirmDialog
         open={confirming}
