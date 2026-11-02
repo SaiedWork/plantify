@@ -1,5 +1,6 @@
 'use client';
 
+import { useCart } from '@/components/cart-provider';
 import { useDemoInbox } from '@/components/demo-inbox';
 import { GuestAccountOffer } from '@/components/guest-account-offer';
 import { OrderItemRow } from '@/components/order-item-row';
@@ -29,10 +30,12 @@ function Success() {
 	const [failed, setFailed] = useState(false);
 
 	const { refresh: refreshInbox } = inbox;
+	const { refresh: refreshCart } = useCart();
 	useEffect(() => {
-		// The receipt was just emailed: show the new-mail dot in the header right away.
+		// The receipt was just emailed: show the new-mail dot in the header right away, and the paid cart is now empty.
 		void refreshInbox();
-	}, [refreshInbox]);
+		void refreshCart();
+	}, [refreshInbox, refreshCart]);
 
 	useEffect(() => {
 		api<TrackedOrder>(`/orders/${orderId}`)

@@ -15,12 +15,14 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { Checkbox } from '@/components/ui/checkbox';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { api, ApiError } from '@/lib/api-client';
 import { authClient } from '@/lib/auth-client';
 import { formatPrice } from '@/lib/format';
 import { useApi } from '@/lib/use-api';
 import { cn } from '@/lib/utils';
 import type { AddressView, PayResult } from '@plantify/contracts';
+import { MAX_SAVED_ADDRESSES } from '@plantify/contracts';
 import { ArrowLeft, CircleAlert, Loader2, Lock, ShoppingCart } from 'lucide-react';
 import Image from 'next/image';
 import Link from 'next/link';
@@ -33,6 +35,7 @@ const DEMO_CARDS = [
 	{ number: '1111 1111 1', label: 'Asks for a fake 3-D Secure approval' },
 ];
 const DEMO_CVC = '123';
+const NEW_ADDRESS = 'new';
 const FAILURE_MESSAGES: Record<string, string> = {
 	card_declined: 'Your card was declined. Try another card, such as the success demo card.',
 	out_of_stock: 'Sorry, someone bought the last one while you were paying. Nothing was charged.',
@@ -46,6 +49,9 @@ const toValues = (a: AddressView): AddressValues => ({
 	region: a.region ?? '',
 	postalCode: a.postalCode,
 });
+
+const sameAddress = (a: AddressValues, b: AddressValues) =>
+	(Object.keys(a) as (keyof AddressValues)[]).every(k => a[k].trim() === b[k].trim());
 
 type Step = { orderId: string | null; threeDS: { paymentId: string; orderId: string } | null };
 type CardValues = { number: string; expMonth: string; expYear: string; cvc: string; name: string };
@@ -138,6 +144,10 @@ export default function CheckoutPage() {
 	const defaultSaved = saved?.find(a => a.isDefault) ?? saved?.[0];
 	const addressValue: AddressValues =
 		address ?? (defaultSaved ? toValues(defaultSaved) : EMPTY_ADDRESS);
+	// Offer to save only an address that is not saved yet, and only while there is room for it.
+	const alreadySaved = saved?.some(a => sameAddress(toValues(a), addressValue)) ?? false;
+	const canSaveAddress =
+		!!session && saved !== null && saved !== undefined && !alreadySaved && saved.length < MAX_SAVED_ADDRESSES;
 	const [card, setCard] = useState<CardValues>({
 		number: '',
 		expMonth: '',
@@ -157,6 +167,23 @@ export default function CheckoutPage() {
 		},
 		() => null,
 	);
+
+	// The page can stay mounted while the shopper browses elsewhere, so a finished (or stale) checkout must not linger:
+	// whenever the cart changes, the order step and everything typed for it start over.
+	const cartKey = cart ? cart.lines.map(l => `${l.variantId}:${l.quantity}`).join(',') : null;
+	const [seenCartKey, setSeenCartKey] = useState(cartKey);
+	if (cartKey !== seenCartKey) {
+		setSeenCartKey(cartKey);
+		if (cartKey !== null && seenCartKey !== null) {
+			setStep({ orderId: null, threeDS: null });
+			setCard({ number: '', expMonth: '', expYear: '', cvc: '', name: '' });
+			setAddress(null);
+			setSaveAddress(false);
+			setTouched({});
+			setSubmitted(false);
+			setPayError(null);
+		}
+	}
 
 	// Signed-in customers use their account email; guests give one here.
 	const emailError = session ? undefined : validateEmail(email);
@@ -192,7 +219,7 @@ export default function CheckoutPage() {
 
 	function handleResult(result: PayResult) {
 		if (result.status === 'paid') {
-			void refresh();
+			// The success page refreshes the cart; doing it here would flash "Nothing to check out" mid-navigation.
 			router.push(`/checkout/success/${result.orderId}`);
 		} else if (result.status === 'requires_action') {
 			setStep({
@@ -230,7 +257,7 @@ export default function CheckoutPage() {
 				});
 				orderId = created.orderId;
 				setStep({ orderId, threeDS: null });
-				if (saveAddress && session)
+				if (saveAddress && canSaveAddress)
 					await api('/addresses', { method: 'POST', json: toAddressPayload(addressValue) }).catch(
 						() => {},
 					);
@@ -366,26 +393,30 @@ export default function CheckoutPage() {
 							{saved && saved.length > 0 && (
 								<div className="space-y-2">
 									<Label htmlFor="savedAddress">Use a saved address</Label>
-									<select
-										id="savedAddress"
+									<Select
 										disabled={locked}
-										value={
-											saved.find(a => JSON.stringify(toValues(a)) === JSON.stringify(addressValue))
-												?.id ?? ''
-										}
-										onChange={e => {
-											const chosen = saved.find(a => a.id === e.target.value);
+										value={saved.find(a => sameAddress(toValues(a), addressValue))?.id ?? NEW_ADDRESS}
+										items={[
+											{ value: NEW_ADDRESS, label: 'Enter a new address' },
+											...saved.map(a => ({ value: a.id, label: `${a.fullName}, ${a.line1}, ${a.city}` })),
+										]}
+										onValueChange={value => {
+											const chosen = saved.find(a => a.id === value);
 											setAddress(chosen ? toValues(chosen) : EMPTY_ADDRESS);
 										}}
-										className="h-8 w-full rounded-lg border bg-background px-2 text-sm outline-none focus-visible:border-ring focus-visible:ring-3 focus-visible:ring-ring/50 disabled:opacity-50 dark:bg-input/30"
 									>
-										<option value="">Enter a new address</option>
-										{saved.map(a => (
-											<option key={a.id} value={a.id}>
-												{a.fullName}, {a.line1}, {a.city}
-											</option>
-										))}
-									</select>
+										<SelectTrigger id="savedAddress" className="w-full">
+											<SelectValue />
+										</SelectTrigger>
+										<SelectContent alignItemWithTrigger={false}>
+											<SelectItem value={NEW_ADDRESS}>Enter a new address</SelectItem>
+											{saved.map(a => (
+												<SelectItem key={a.id} value={a.id}>
+													{a.fullName}, {a.line1}, {a.city}
+												</SelectItem>
+											))}
+										</SelectContent>
+									</Select>
 								</div>
 							)}
 							<AddressFields
@@ -397,7 +428,7 @@ export default function CheckoutPage() {
 								onFieldBlur={key => touch(`ship-${key}`)}
 								// Saving an address needs an account, so guests never see this.
 								zipAside={
-									!locked && session ? (
+									!locked && canSaveAddress ? (
 										<label className="flex w-fit items-center gap-2">
 											<Checkbox
 												checked={saveAddress}
