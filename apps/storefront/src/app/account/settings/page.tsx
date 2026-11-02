@@ -33,9 +33,11 @@ function ProfileForm({ name, email, verified }: { name: string; email: string; v
         <Input id="email" value={email} readOnly disabled />
         <p className="text-xs text-muted-foreground">{verified ? "Verified" : "Not verified"}. Email can&apos;t be changed in this demo.</p>
       </div>
-      <Button type="submit" disabled={busy || value.trim() === name}>
-        {busy ? "Saving…" : "Save changes"}
-      </Button>
+      <div className="flex justify-end">
+        <Button type="submit" disabled={busy || value.trim() === name}>
+          {busy ? "Saving…" : "Save changes"}
+        </Button>
+      </div>
     </form>
   );
 }
@@ -82,9 +84,11 @@ function PasswordForm() {
         <Label htmlFor="confirm">Confirm new password</Label>
         <PasswordInput id="confirm" name="confirm" required minLength={8} maxLength={128} autoComplete="new-password" />
       </div>
-      <Button type="submit" disabled={busy}>
-        {busy ? "Updating…" : "Update password"}
-      </Button>
+      <div className="flex justify-end">
+        <Button type="submit" disabled={busy}>
+          {busy ? "Updating…" : "Update password"}
+        </Button>
+      </div>
     </form>
   );
 }
