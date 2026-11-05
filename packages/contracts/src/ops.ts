@@ -3,8 +3,6 @@ import { pagingSchema } from './admin.js';
 import type { OrderStatus } from './orders.js';
 import type { Role } from './roles.js';
 
-// ---- dashboard ---------------------------------------------------------------------------------
-
 export const DASHBOARD_RANGES = [7, 30, 90] as const;
 export const dashboardQuerySchema = z.object({
   days: z.coerce
@@ -64,8 +62,6 @@ export type DashboardStats = {
   ordersByStatus: { status: OrderStatus; count: number }[];
   categoryRevenue: { name: string; revenueCents: number }[];
 };
-
-// ---- outbound webhooks -------------------------------------------------------------------------
 
 export const WEBHOOK_EVENTS = [
   'order.created',
@@ -131,8 +127,6 @@ export type WebhookEnvelope<T = unknown> = {
   createdAt: string;
   data: T;
 };
-
-// ---- staff & audit -----------------------------------------------------------------------------
 
 /** The owner is fixed; only these two roles can be switched between. */
 export const STAFF_SWITCHABLE_ROLES = ['catalog_manager', 'order_manager'] as const;

@@ -1,6 +1,6 @@
 # Deploying Plantify (Vercel + Neon)
 
-Status: **deployed** after the final UX/UI pass (milestone 10 in [PLAN.md](PLAN.md)) and smoke-tested on Vercel and Neon: API `https://plantify-api.vercel.app`, storefront `https://plantify-storefront.vercel.app`, admin `https://admin-plantify.vercel.app`. The pitfalls hit on the first deploy are in section 6.
+Status: **deployed** after the final UX/UI pass and smoke-tested on Vercel and Neon: API `https://plantify-api.vercel.app`, storefront `https://plantify-storefront.vercel.app`, admin `https://admin-plantify.vercel.app`. The pitfalls hit on the first deploy are in section 6.
 
 Three Vercel projects from this one repo, one Neon database, all on free tiers (no card needed).
 

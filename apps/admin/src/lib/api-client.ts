@@ -1,4 +1,3 @@
-// Browser-side helpers for talking to the same-origin /api proxy.
 
 export class ApiError extends Error {
   constructor(

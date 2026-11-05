@@ -84,7 +84,7 @@ flowchart TD
   M --> N([Signed-in customer])
 ```
 
-- Codes are stored hashed and expire after 10 minutes. Sending is limited to 5 per minute per address; the API as a whole allows 60 auth requests per minute.
+- Codes are stored hashed and expire after 10 minutes. Sending is limited to 5 per minute per address; the auth endpoints as a whole allow 60 requests per minute, and the demo stops creating accounts after 200 sign-ups in 24 hours.
 - Customers cannot set their own role; staff roles come from the seed only.
 - This is a demo: codes arrive in the in-app inbox, not a real mailbox.
 
@@ -96,3 +96,7 @@ A guest gives an email, then the same address and card steps as a customer. Ther
 - **Receipt.** The confirmation email lands in the demo inbox for that address (the inbox cookie is granted for the contact email) and holds a "view your order" link, `/orders/track/<orderId>.<expiresAtMs>.<hmac>`, valid for 24 hours. The token is stateless and signed with `BETTER_AUTH_SECRET`.
 - **Tracking page.** Public, read-only: status steps with timestamps (from the `order_event` table, filled by a database trigger), items, totals, address and the invoice. An expired link offers a form to request a new one (order number plus email); the answer is always the same, so it cannot be used to discover orders. "Track an order" in the footer opens the same form.
 - **Joining an account later.** Signing in needs a verified email, so every new session attaches guest orders with that email to the account (`session.create.after` in `auth.service.ts`). The success and tracking pages offer "Create account" with the email prefilled.
+
+## 5. Staff sign-in
+
+The admin app is separate and has no sign-up. Its login page offers the three seeded staff accounts (owner, catalog manager, order manager) as role buttons and signs in with the shared demo password. A customer account that signs in there is rejected and kept out of the back office. Roles and permissions are enforced by the API on every request; see `docs/GUIDE.md` for a tour of what each role sees.

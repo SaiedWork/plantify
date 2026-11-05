@@ -3,8 +3,6 @@
 import { useEffect, useId, useRef, useState, type KeyboardEvent, type PointerEvent, type ReactNode } from "react";
 import { cn } from "@/lib/utils";
 
-// ---- helpers -----------------------------------------------------------------------------------
-
 const compactMoney = new Intl.NumberFormat("en-US", { style: "currency", currency: "USD", notation: "compact", maximumFractionDigits: 1 });
 const money = new Intl.NumberFormat("en-US", { style: "currency", currency: "USD" });
 
@@ -46,8 +44,6 @@ function useWidth<T extends HTMLElement>() {
 export function Viz({ className, children }: { className?: string; children: ReactNode }) {
   return <div className={cn("viz-root", className)}>{children}</div>;
 }
-
-// ---- stat tile ---------------------------------------------------------------------------------
 
 /**
  * Headline number with a signed change against the previous period. The arrow and the words carry the
@@ -101,8 +97,6 @@ export function StatTile({
     </div>
   );
 }
-
-// ---- area chart (one series over time) ---------------------------------------------------------
 
 export type AreaPoint = { date: string; value: number; secondary?: number };
 
@@ -280,8 +274,6 @@ export function AreaChart({
     </div>
   );
 }
-
-// ---- horizontal bar list (compare magnitude) ---------------------------------------------------
 
 export type BarItem = { label: string; value: number; valueLabel: string; detail?: string };
 

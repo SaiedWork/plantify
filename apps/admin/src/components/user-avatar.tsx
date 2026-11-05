@@ -14,7 +14,6 @@ export function initials(name: string) {
 	return ((words[0]?.[0] ?? '') + (words.length > 1 ? (words.at(-1)?.[0] ?? '') : '')).toUpperCase();
 }
 
-/** Rounded-square initials avatar. */
 export function UserAvatar({ name, role, className }: { name: string; role: Role; className?: string }) {
 	return (
 		<span

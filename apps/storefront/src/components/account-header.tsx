@@ -3,7 +3,6 @@
 import { UserAvatar } from "@/components/user-avatar";
 import { authClient } from "@/lib/auth-client";
 
-/** Who is signed in, at the top of every account page. */
 export function AccountHeader() {
   const { data: session, isPending } = authClient.useSession();
   if (isPending || !session) {

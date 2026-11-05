@@ -25,8 +25,6 @@ export class AdminOperationsController {
     private readonly customers: AdminCustomersService,
   ) {}
 
-  // ---- inventory -------------------------------------------------------------------------------
-
   @RequirePermission('inventory:manage')
   @Get('inventory')
   listInventory(@Query(new ZodPipe(inventoryQuerySchema)) query: InventoryQuery) {
@@ -45,8 +43,6 @@ export class AdminOperationsController {
   movements(@Param('variantId') variantId: string) {
     return this.inventory.movements(variantId);
   }
-
-  // ---- orders ----------------------------------------------------------------------------------
 
   @RequirePermission('orders:view')
   @Get('orders')
@@ -73,8 +69,6 @@ export class AdminOperationsController {
   refund(@Req() req: AuthedRequest, @Param('id') id: string, @Body(new ZodPipe(refundSchema)) body: { restock: boolean; reason?: string }) {
     return this.orders.refund(req.user!.id, id, body);
   }
-
-  // ---- customers (owner only) ------------------------------------------------------------------
 
   @RequirePermission('customers:view')
   @Get('customers')

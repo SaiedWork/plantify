@@ -1,4 +1,4 @@
-# Five-minute demo script
+# Five-minute guide
 
 A guided tour of Plantify. Everything is fake: no real payments, no real email, and the database resets every 7 days. Locally, use `storefront.localhost:3000` and `admin.localhost:3001` (see the [README](../README.md)); on the deployed demo, use the two public URLs.
 

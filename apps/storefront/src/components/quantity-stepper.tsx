@@ -1,7 +1,6 @@
 import { Button } from '@/components/ui/button';
 import { Minus, Plus } from 'lucide-react';
 
-/** The − / + quantity control shared by the cart and the product page. */
 export function QuantityStepper({
 	value,
 	min = 1,

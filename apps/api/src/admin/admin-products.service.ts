@@ -203,8 +203,6 @@ export class AdminProductsService {
     await this.audit.log(actorId, 'product.delete', id);
   }
 
-  // ---- variants --------------------------------------------------------------------------------
-
   async addVariant(actorId: string, productId: string, input: NewVariantInput): Promise<AdminProductDetail> {
     const { rows } = await this.db.execute<{ slug: string; n: string }>(
       sql`select p.slug, (select count(*) from product_variant where product_id = p.id) as n from product p where p.id = ${productId}`,
@@ -264,8 +262,6 @@ export class AdminProductsService {
     await this.audit.log(actorId, 'variant.delete', variantId, { productId: v.product_id });
     return this.get(v.product_id);
   }
-
-  // ---- images ----------------------------------------------------------------------------------
 
   async addImage(actorId: string, productId: string, url: string, alt: string): Promise<AdminProductDetail> {
     const { rows } = await this.db.execute<{ n: string; next: number }>(sql`

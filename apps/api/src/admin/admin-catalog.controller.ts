@@ -45,8 +45,6 @@ export class AdminCatalogController {
     private readonly categories: AdminCategoriesService,
   ) {}
 
-  // ---- products --------------------------------------------------------------------------------
-
   @Get('products')
   list(@Query(new ZodPipe(adminProductQuerySchema)) query: AdminProductQuery) {
     return this.products.list(query);
@@ -73,8 +71,6 @@ export class AdminCatalogController {
     await this.products.remove(req.user!.id, id);
   }
 
-  // ---- variants --------------------------------------------------------------------------------
-
   @Post('products/:id/variants')
   addVariant(@Req() req: AuthedRequest, @Param('id') id: string, @Body(new ZodPipe(newVariantSchema)) body: NewVariantInput) {
     return this.products.addVariant(req.user!.id, id, body);
@@ -89,8 +85,6 @@ export class AdminCatalogController {
   removeVariant(@Req() req: AuthedRequest, @Param('id') id: string) {
     return this.products.removeVariant(req.user!.id, id);
   }
-
-  // ---- images ----------------------------------------------------------------------------------
 
   @Post('products/:id/images')
   addImage(@Req() req: AuthedRequest, @Param('id') id: string, @Body(new ZodPipe(addImageSchema)) body: { url: string; alt: string }) {
@@ -117,8 +111,6 @@ export class AdminCatalogController {
     const url = await this.storage.save(`${crypto.randomUUID()}.${kind.ext}`, file.buffer, kind.type);
     return { url };
   }
-
-  // ---- categories ------------------------------------------------------------------------------
 
   @Get('categories')
   listCategories() {

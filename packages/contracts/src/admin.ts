@@ -1,8 +1,6 @@
 import { z } from 'zod';
 import { ORDER_STATUSES, type Address, type OrderItemView, type OrderStatus } from './orders.js';
 
-// ---- shared bits -------------------------------------------------------------------------------
-
 export const pagingSchema = z.object({
   page: z.coerce.number().int().min(1).max(1000).default(1),
   pageSize: z.coerce.number().int().min(1).max(100).default(20),
@@ -23,8 +21,6 @@ const imageUrl = z
   .refine((u) => u.startsWith('/products/') || u.startsWith('/api/uploads/') || /^https:\/\/[^\s]+$/.test(u), {
     message: 'Image must be a bundled image, an upload, or an https URL',
   });
-
-// ---- products ----------------------------------------------------------------------------------
 
 export const MAX_IMAGES_PER_PRODUCT = 4;
 
@@ -119,8 +115,6 @@ export type AdminProductDetail = {
   variants: AdminVariant[];
 };
 
-// ---- categories --------------------------------------------------------------------------------
-
 export const categoryInputSchema = z.object({
   name: z.string().trim().min(2).max(60),
   description: z.string().trim().max(300).optional(),
@@ -136,8 +130,6 @@ export type AdminCategory = {
   sortOrder: number;
   productCount: number;
 };
-
-// ---- inventory ---------------------------------------------------------------------------------
 
 export const inventoryQuerySchema = pagingSchema.extend({
   q: z.string().trim().max(80).optional(),
@@ -178,8 +170,6 @@ export type StockMovement = {
   createdAt: string;
 };
 
-// ---- orders ------------------------------------------------------------------------------------
-
 export const adminOrderQuerySchema = pagingSchema.extend({
   q: z.string().trim().max(80).optional(),
   status: z.enum(ORDER_STATUSES).optional(),
@@ -217,8 +207,6 @@ export type AdminOrderDetail = AdminOrderListItem & {
   invoice: { number: string; issuedAt: string } | null;
   refunds: { id: string; amountCents: number; restock: boolean; reason: string | null; createdAt: string }[];
 };
-
-// ---- customers ---------------------------------------------------------------------------------
 
 export const customerQuerySchema = pagingSchema.extend({ q: z.string().trim().max(80).optional() });
 export type CustomerQuery = z.infer<typeof customerQuerySchema>;

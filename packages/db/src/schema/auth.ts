@@ -1,7 +1,7 @@
 import { boolean, pgTable, text, timestamp } from 'drizzle-orm/pg-core';
 import { createdAt, updatedAt } from './_helpers.js';
 
-// Shape follows Better Auth's core tables; verify against its CLI output in milestone 2.
+// Shape follows Better Auth's core tables.
 export const user = pgTable('user', {
   id: text('id').primaryKey(),
   name: text('name').notNull(),

@@ -62,8 +62,6 @@ export class AdminStaffService {
     return rows[0];
   }
 
-  // ---- audit log -------------------------------------------------------------------------------
-
   async auditLog(query: AuditQuery): Promise<Page<AuditEntry>> {
     const where: SQL[] = [sql`true`];
     if (query.action) where.push(sql`a.action like ${query.action.replace(/[%_\\]/g, '\\$&') + '%'}`);

@@ -5,7 +5,6 @@ import { useState, type ComponentProps } from "react";
 import { Input } from "@/components/ui/input";
 import { cn } from "@/lib/utils";
 
-/** Password field with a show/hide toggle. */
 export function PasswordInput({ className, ...props }: Omit<ComponentProps<"input">, "type">) {
   const [shown, setShown] = useState(false);
   return (

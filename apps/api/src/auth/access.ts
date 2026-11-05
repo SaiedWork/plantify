@@ -14,7 +14,6 @@ const PERMISSION = 'access:permission';
 export const Public = () => SetMetadata(PUBLIC, true);
 /** Like @Public(), but still fills `req.user` when a session exists (guest checkout). */
 export const OptionalAuth = () => SetMetadata(OPTIONAL, true);
-/** Allow only these roles. */
 export const Roles = (...roles: Role[]) => SetMetadata(ROLES_KEY, roles);
 /** Allow only roles holding this permission (see packages/contracts). */
 export const RequirePermission = (permission: Permission) => SetMetadata(PERMISSION, permission);

@@ -107,8 +107,6 @@ describe('Admin API (e2e)', () => {
   const stockOf = async (variantId: string) =>
     (await db.execute<{ on_hand: number }>(sql`select on_hand from inventory_level where variant_id = ${variantId}`)).rows[0]!.on_hand;
 
-  // ------------------------------------------------------------------------------------------------
-
   describe('role matrix', () => {
     const endpoints: { path: string; catalogManager: number; orderManager: number; owner: number }[] = [
       { path: '/api/admin/products', catalogManager: 200, orderManager: 403, owner: 200 },

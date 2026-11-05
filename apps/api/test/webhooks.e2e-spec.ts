@@ -158,8 +158,6 @@ describe('Outbound webhooks (e2e)', () => {
   const deliveries = async (endpointId?: string) =>
     (await owner.get(`/api/admin/webhooks/deliveries${endpointId ? `?endpointId=${endpointId}` : ''}`).expect(200)).body;
 
-  // ------------------------------------------------------------------------------------------------
-
   describe('access and validation', () => {
     it('is owner-only', async () => {
       const paths = ['/api/admin/webhooks/endpoints', '/api/admin/webhooks/deliveries'];

@@ -2,11 +2,11 @@
 
 This file provides guidance to Claude Code (claude.ai/code) when working with code in this repository.
 
-Plantify is a zero-budget demo store: a Next.js storefront, a Next.js admin/ERP, and a NestJS REST API in one pnpm + Turborepo monorepo (Node >= 22, pnpm 9). All data is fake and the DB is meant to be wiped periodically. `docs/PLAN.md` holds the approved plan and a status table of which milestones are done (all are); read its "Differences from the plan" section before assuming something exists.
+Plantify is a zero-budget demo store: a Next.js storefront, a Next.js admin/ERP, and a NestJS REST API in one pnpm + Turborepo monorepo (Node >= 22, pnpm 9). All data is fake and the DB is meant to be wiped periodically. All planned features are built and deployed.
 
 ## Workflow (mandatory)
 
-All work follows the loop in [docs/COLLABORATION.md](docs/COLLABORATION.md): propose the next task from the roadmap, wait for the dev user's approval, implement, report with a short summary, the proposed next task and a short domain-based commit message, then wait for review. Never skip it, never start a task unapproved, and never commit unless asked.
+All work follows this loop: propose the next task, wait for the dev user's approval, implement, report with a short summary, the proposed next task and a short domain-based commit message, then wait for review. Never skip it, never start a task unapproved, and never commit unless asked.
 
 ## Commands
 

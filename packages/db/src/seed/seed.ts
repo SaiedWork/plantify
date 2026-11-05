@@ -94,7 +94,7 @@ export async function seed(db: Db, now = new Date()) {
   );
 
   // --- Users -------------------------------------------------------------
-  // Credentials (password accounts) are created in milestone 2 through Better Auth's hasher.
+  // Credentials (password accounts) are created through Better Auth's hasher.
   const staffRows = STAFF.map((u) => ({
     id: faker.string.uuid(),
     ...u,
